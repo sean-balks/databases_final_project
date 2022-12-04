@@ -35,7 +35,12 @@
         <input type="password" class="sign_in_form" placeholder="Password">
 
         <div class="text_acc_type">
-            <input type="checkbox">Check box for staff privlidges
+            <form action = "" method = "post">
+            <input type="radio" name="userType" value="customer"> Customer
+            <input type="radio" name="userType" value="staff"> Airline Staff
+            <br/>
+
+        </form>
         </div>
     
         <button class="login_button">Create User</button>
