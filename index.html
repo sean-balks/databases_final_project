@@ -17,39 +17,63 @@
         {{error}}
     </div>
 
-    <div class="db">
-        <p class="sign_in">Public Database</p>
-        <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
-        <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
-        <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
-        <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
-        <button class="search_button">Search</button>
-        {% for result in results %}
-            <p> {{result}} </p> 
-        {% endfor %}
-    </div>
     
-    <div class="box">
-        <form method="POST">
-        <p class="sign_in">Sign In</p>
-        <input type="text" class="sign_in_form" name='Username' id='Username' placeholder="Username">
-        <input type="password" class="sign_in_form" name='Password' id='Password' placeholder="Password">
-        <button class="login_button" onclick="login()">Login</button>
+    <div class="org">
+        <div class="db">
+            <p class="sign_in">Public Database</p>
+            <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
+            <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
+            <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
+            <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
+            <button class="search_button">Search</button>
+            {% for result in results %}
+                <p> {{result}} </p> 
+            {% endfor %}
+        </div>
 
-    </div>
-
-    <div class="box">
-        <form method="POST">
-        <p class="sign_in">Register</p>
-        <input type="text" class="sign_in_form" name='Username' id='Username' placeholder="Username">
-        <input type="password" class="sign_in_form" name='Password' id='Password' placeholder="Password">
-
-        <div class="text_acc_type">
-            <input type="checkbox" name='isStaff' id='isStaff'>Check box for staff privlidges</input>
-            <input type="text" id="staff_airline" placeholder="If staff, enter Airline"></input>
+        <div class="box">
+            <form method="POST">
+            <p class="sign_in">Sign In</p>
+            <input type="text" class="sign_in_form" name='Username' id='Username' placeholder="Username">
+            <input type="password" class="sign_in_form" name='Password' id='Password' placeholder="Password">
+            <button class="login_button" onclick="login()">Login</button>
         </div>
     
-        <button class="login_button" onclick="register()">Create User</button>
+        <div class="box">
+            <form method="POST">
+            <p class="sign_in">Register Customer</p>
+            <input type="text" class="sign_in_form" name='cust_name' id='cust_name' placeholder="Name">
+            <input type="text" class="sign_in_form" name='cust_email' id='cust_email' placeholder="Email">
+            <input type="password" class="sign_in_form" name='cust_password' id='cust_password' placeholder="Password">
+            <input type="text" class="sign_in_form" name='cust_address' id='cust_address' placeholder="Address">
+            <input type="text" class="sign_in_form" name='cust_phone_number' id='cust_phone_number' placeholder="Phone Number">
+            <input type="text" class="sign_in_form" name='cust_passport_number' id='cust_passport_number' placeholder="Passport Number">
+            <input type="text" class="sign_in_form" name='cust_passport_expiration' id='cust_passport_expiration' placeholder="Passport Expiration">
+            <input type="text" class="sign_in_form" name='cust_passport_country' id='cust_passport_country' placeholder="Passport Country">
+            <input type="text" class="sign_in_form" name='cust_dob' id='cust_dob' placeholder="Date of Birth">
+
+        
+            <button class="login_button" onclick="register_customer()">Create User</button>
+        </div>
+
+        <div class="box">
+            <form method="POST">
+            <p class="sign_in">Register Staff</p>
+            <input type="text" class="sign_in_form" name='staff_username' id='staff_username' placeholder="Username">
+            <input type="password" class="sign_in_form" name='staff_password' id='staff_password' placeholder="Password">
+            <input type="text" class="sign_in_form" name='staff_first_name' id='staff_first_name' placeholder="First Name">
+            <input type="text" class="sign_in_form" name='staff_last_name' id='staff_last_name' placeholder="Last Name">
+            <input type="text" class="sign_in_form" name='staff_dob' id='staff_dob' placeholder="Date of Birth">
+            <input type="text" class="sign_in_form" name='staff_phone_number' id='staff_phone_number' placeholder="Primary Phone Number">
+            <input type="text" class="sign_in_form" name='staff_additional_phone_number' id='staff_additional_phone_number' placeholder="Additional Phone Numbers">
+            <input type="text" class="sign_in_form" name='staff_email' id='staff_email' placeholder="Email">
+            <input type="text" class="sign_in_form" name='staff_additional_email' id='staff_additional_email' placeholder="Additional Emails">
+            <input type="text" class="sign_in_form" name='staff_airline' id='staff_airline' placeholder="Airline">
+        
+            <button class="login_button" onclick="register_staff()">Create User</button>
+        </div>
+
+
     </div>
 
 </html>

@@ -71,20 +71,7 @@ def loginAuth():
         return redirect(url_for('home'))
     else:
         error = 'Invalid login or username'
-        return render_template('login.html', error=error)
-
-
-@app.route("/", methods=["GET", "POST"])
-def register():
-    error = None
-    if request.method == "POST":
-        isStaff = len(request.form.getlist('isStaff'))
-        if not isStaff:
-            return redirect(url_for('registerCustomer'))
-        elif isStaff:
-            return redirect(url_for('registerStaff'))
-    return render_template("register.html", error=error)
-
+        return render_template('index.html', error=error)
 
 @app.route("/registerCustomer", methods=['GET','POST'])
 def registerCustomer():

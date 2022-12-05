@@ -15,15 +15,15 @@
 .db {
     float: left;
     margin: 1em;
-    border: 3px solid #000000;
+    border: 2.5px solid #000000;
 }
 
 .box {
-    margin: 1em;
+    margin: 0.5em;
     float: right;
-    border: 3px solid #000000;
-    height: 220px;
-    width: 300px;
+    border: 2.5px solid #000000;
+    height: 500px;
+    width: 200px;
 }
 
 .text_acc_type {
@@ -34,14 +34,14 @@
 }
 
 .sign_in {
-    font-size: 1.6em;
+    font-size: 1.4em;
     margin: 0.6em;
     text-align: center;
 }
 
 .sign_in_form {
     height: 2em;
-    width: 10em;
+    width: 12em;
     border: 2px solid #aaaaaa;
     margin: 0.5em;
     display: block;
@@ -69,4 +69,8 @@ input[type="string"] {
     width: 7.5em;
     border: 2px solid #000000;
     margin: 0.6em;
+}
+
+.org {
+    display:inline-block;
 }
