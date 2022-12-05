@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF 8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Airport Database</title>
+        <link rel="stylesheet"
+        href="https://cdnjs.clourflare.com/ajax/libs/normalize/7.0.0/normalize.min.css">
+
+        <link rel="stylesheet" href="/static/style.css">
+
+    </head>
+
+    <div class="title">
+        <p class="title__h1">Airport Database Project</p>
+        <p class="title__h2">By Sean Balakhanei and Josh Quatela</p>
+        {{error}}
+    </div>
+
+    <div class="db">
+        <p class="sign_in">Public Database</p>
+        <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
+        <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
+        <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
+        <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
+        <button class="search_button">Search</button>
+        {% for result in results %}
+            <p> {{result}} </p> 
+        {% endfor %}
+    </div>
+    
+    <div class="box">
+        <form method="POST">
+        <p class="sign_in">Sign In</p>
+        <input type="text" class="sign_in_form" name='Username' id='Username' placeholder="Username">
+        <input type="password" class="sign_in_form" name='Password' id='Password' placeholder="Password">
+        <button class="login_button" onclick="login()">Login</button>
+
+    </div>
+
+    <div class="box">
+        <form method="POST">
+        <p class="sign_in">Register</p>
+        <input type="text" class="sign_in_form" name='Username' id='Username' placeholder="Username">
+        <input type="password" class="sign_in_form" name='Password' id='Password' placeholder="Password">
+
+        <div class="text_acc_type">
+            <input type="checkbox" name='isStaff' id='isStaff'>Check box for staff privlidges</input>
+            <input type="text" id="staff_airline" placeholder="If staff, enter Airline"></input>
+        </div>
+    
+        <button class="login_button" onclick="register()">Create User</button>
+    </div>
+
+</html>

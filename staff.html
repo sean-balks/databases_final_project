@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF 8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Airport Database</title>
+        <link rel="stylesheet"
+        href="https://cdnjs.clourflare.com/ajax/libs/normalize/7.0.0/normalize.min.css">
+
+        <link rel="stylesheet" href="/static/style.css">
+
+    </head>
+
+    <div class="title">
+        <p class="title__h1">Airport Database Project</p>
+        <p class="title__h2">By Sean Balakhanei and Josh Quatela</p>
+        {{error}}
+    </div>
+
+    <div class="db">
+        <p class="sign_in">Access Database</p>
+        <div>
+            <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
+            <input type="text" class="info_input" name="airline_name" id="airline_name" placeholder="Airline Name">
+            <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
+            <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
+            <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
+            <input type="checkbox">Roundtrip?</input>
+        </div>
+
+        <div>
+            <input type="text" class="info_input" name="departure_date" id="departure_date" placeholder="Departure Date">
+            <input type="text" class="info_input" name="departure_time" id="departure_time" placeholder="Departure Time">
+            <input type="text" class="info_input" name="return_date" id="return_date" placeholder="Return Date">
+            <input type="text" class="info_input" name="return_time" id="return_time" placeholder="Return Time">
+            <input type="text" class="info_input" name="new_status" id="new_status" placeholder="New Status">
+            <input type="text" class="info_input" name="comment" id="comment" placeholder="Comment">
+        </div>
+
+        <button class="search_button" id="search">Search</button>
+        <button class="search_button" id="create_flight">Create New Flight</button>
+        <button class="search_button" id="change_status">Change Flight Status</button>
+        <button class="search_button" id="add_airplane">Add Airplane</button>
+        <button class="search_button" id="add_airport">Add Airport</button>
+        <button class="search_button" id="view_ratings">View Flight Ratings</button>
+
+        {% for result in results %}
+            <p> {{result}} </p> 
+        {% endfor %}
+    </div>
+
+    <div class="box">
+        <p class="sign_in">Actions</p>
+        <button class="search_button" id="view_frequent_customers">View Frequent Customers</button>
+        <div><button class="search_button" id="view_reports">View Reports</button></div>
+        <div><button class="search_button" id="view_revenue">View Earned Revenue</button></div>
+        <button class="search_button" id="logout" onclick="logout()">Logout</button>
+
+    </div>
+
+</html>
