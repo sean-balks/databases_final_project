@@ -47,6 +47,12 @@
         {% for result in results %}
             <p> {{result}} </p> 
         {% endfor %}
+
+        <p class="title">Customers</p>
+
+        {% for customer in customers %}
+            <p> {{customer}} </p>
+        {% endfor %}
     </div>
 
     <div class="box">
@@ -54,7 +60,7 @@
         <button class="search_button" id="view_frequent_customers">View Frequent Customers</button>
         <div><button class="search_button" id="view_reports">View Reports</button></div>
         <div><button class="search_button" id="view_revenue">View Earned Revenue</button></div>
-        <button class="search_button" id="logout" onclick="logout()">Logout</button>
+        <a href="/logout"><button class="search_button" id="logout" onclick="logout()">Logout</button></a>
 
     </div>
 
