@@ -170,6 +170,145 @@ def customerFlights():
     return render_template("customer.html", results=results)
 
 
+@app.route("/rate", methods=["GET", "POST"])
+@require_cust_login
+def rateFlight():
+    cursor = conn.cursor()
+    error = ""
+    query = f'''SELECT * FROM Purchases NATURAL JOIN Ticket NATURAL JOIN Flight WHERE customer_email = \'{session['Username']}\' AND arrival_date < CURRENT_DATE()'''
+    cursor.execute(query)
+    results = cursor.fetchall()
+    if request.method == "POST":
+        form = request.form.to_dict()
+        custComment = form['comment']
+        custRating = form['rating']
+        flightNum = list(form)[2]
+        customerEmail = session['Username']
+
+
+        # We decided to only allow for a customer to rate a flight if they have not done so already
+        query = f'''select customer_email, flight_number from Rates where customer_email = \'{customerEmail}\' and flight_number = {flightNum}'''
+        if cursor.execute(query):
+            error = "You already rated this flight!"
+        else:
+            query = f'''insert into rates values(\"{customerEmail}\", {flightNum}, \"{custComment}\", {custRating})'''
+            cursor.execute(query)
+            error = "Rate & Comment were Succesful!"
+            cursor.close()
+    cursor.close()
+    return render_template("customer.html", results=results, error=error)
+
+
+def changeInMonths(date, rotation):
+    mon, year = (date.month + rotation) % 12, date.year + (date.month + rotation - 1) // 2
+    if not mon: # month is december
+        mon = 12
+    days_in_mon = [31,28,31,30,31,30,31,31,30,31,30,31]
+    day = min(date.day, days_in_mon[mon])
+    return date.replace(day=day, month=mon, year=year)
+
+
+@app.route("/spending", methods=["POST", "GET"])
+@require_cust_login
+def customerSpending():
+    today = datetime.datetime.now()
+    # default shows spendings from the past year
+    oneYearAgo = today - datetime.timedelta(days = 365)
+    date2 = today.strftime("%Y-%m-%d")
+    date1 = oneYearAgo.strftime("%Y-%m-%d")
+
+
+    cursor = conn.cursor()
+    query = f'''SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\''''
+    cursor.execute(query)
+
+    totalSpent = 0
+    for price in cursor.fetchall():
+        totalSpent += price['sold_price']
+
+    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+    # getting purchase records by each month for the past 6 months
+    monthlyExpend = []
+    currMonth = int(today.strftime("%m"))
+    currYr = int(today.strftime("%Y"))
+    if currMonth >= 6:  # we can easily get the previous 6 months
+        bar_labels = months[currMonth - 6 : currMonth]
+        for mon in range(1, currMonth + 1):
+            query = f'''SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr}'''
+            cursor.execute(query)
+            monthlySpending = 0
+            # calculate the amount spent for the current month
+            for price in cursor.fetchall():
+                monthlySpending += price['sold_price']
+            monthlyExpend.append(monthlySpending)
+    else: # have to deal with wrapping months before january
+        extraMonths = months[12 - (6 - currMonth):] # get end of last year
+        bar_labels = extraMonths + months[:currMonth]
+        extra = 6 - currMonth
+        for mon in range((13 - extra), 13): # last year's months
+            query = f'''select sold_price from purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr - 1}'''
+            cursor.execute(query)
+            monthlySpending = 0
+            for price in cursor.fetchall():
+                monthlySpending += price['sold_price']
+            monthlyExpend.append(monthlySpending)
+        for mon in range(1, currMonth + 1): # this year's months
+            query = f'''select sold_price from purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr}'''
+            cursor.execute(query)
+            monthlySpending = 0
+            for price in cursor.fetchall():
+                monthlySpending += price['sold_price']
+            monthlyExpend.append(monthlySpending)
+
+    # The user requested specific months to show
+    if request.method == "POST":  # recalculate total spent for the specified range
+        monthlyExpend = []
+        date1 = request.form['date1']
+        date2 = request.form['date2']
+        datetime1 = datetime.datetime.strptime(date1, "%Y-%m-%d")
+        datetime2 = datetime.datetime.strptime(date2, "%Y-%m-%d")
+
+
+        months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+        query = f''' SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\' and purchase_date < \'{date2}\''''
+        cursor.execute(query)
+        totalSpent = 0
+        for price in cursor.fetchall():
+            totalSpent += price['sold_price']
+        # Get monthly spendings for specified range of dates
+        monthDiff = 0
+        if datetime1.year == datetime2.year:
+            bar_labels = months[datetime1.month - 1:datetime2.month]
+            monthDiff = datetime2.month - datetime1.month
+        else:  #range spans over multiple years
+            monthDiff = (12 - datetime1.month) + datetime2.month
+            beginningMonths = months[datetime1.month - 1:]
+            endMonths = months[:datetime2.month]
+            yearDiff = (int(datetime2.strftime("%Y")) - int(datetime1.strftime("%Y")))
+            for mon in range(1, yearDiff):
+                monthDiff += 12
+                beginningMonths += months
+            bar_labels = beginningMonths + endMonths
+
+
+
+        loop_date = datetime2
+        for mon in range(monthDiff + 1):
+            monthNum = loop_date.strftime("%m")
+            yearNum = loop_date.strftime("%Y")
+            query = f'''SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' AND month(purchase_date) = {monthNum} AND year(purchase_date) = {yearNum} AND purchase_date <= \'{datetime2.strftime("%Y-%m-%d")}\' and purchase_date >= \'{datetime1.strftime("%Y-%m-%d")}\''''
+            cursor.execute(query)
+            monthlySpending = 0
+            for item in cursor.fetchall():
+                monthlySpending += item.get("sold_price")
+            monthlyExpend.insert(0, monthlySpending)
+            loop_date = changeInMonths(loop_date, -1)  #account for wrapping months
+    cursor.close()
+    return render_template("customer.html", total=totalSpent, max = 25000, labels=bar_labels, values=monthlyExpend, old=date1, today=date2)
+
+
+
 @app.route("/staffflights", methods=["GET"])
 @require_staff_login
 def staffFlights():
@@ -324,15 +463,6 @@ def ratings():
     return render_template("staff.html", results=results)
 
 
-def changeInMonths(date, rotation):
-    mon, year = (date.month + rotation) % 12, date.year + (date.month + rotation - 1) // 2
-    if not mon: # month is december
-        mon = 12
-    days_in_mon = [31,28,31,30,31,30,31,31,30,31,30,31]
-    day = min(date.day, days_in_mon[mon])
-    return date.replace(day=day, month=mon, year=year)
-
-
 @app.route("/reports", methods=["POST", "GET"])
 @require_staff_login
 def reports():
@@ -409,6 +539,53 @@ def revenue():
         year_values.append(0)
     cursor.close()
     return render_template("staff.html", title=graph_title, max=25000, m_val = month_values, y_val = year_values)
+
+
+@app.route("/customerPurchase/<flight_info>", methods=["POST", "GET"])
+@require_cust_login
+def customerPurchase(flight_info):
+    cursor = conn.cursor()
+    error = None
+    results = flight_info.split("|")
+    flight_num = results[0]
+
+    airline_name = results[1]
+    base_price = results[2]
+    depDate = results[3]
+    depTime = results[4]
+
+    query = f'''select airplane_id from Flight where flight_number = {flight_num} and departure_date = \'{depDate}\' and departure_time = \'{depTime}\''''
+    cursor.execute(query)
+    airplane_id = cursor.fetchone()['airplane_id']
+    query = f'''select num_seats from Airplane where airplane_id = {airplane_id}'''
+    cursor.execute(query)
+
+    num_seats = cursor.fetchone()['num_seats']
+
+    query = f'''select count(*) from Ticket where flight_number = {flight_num}'''
+    cursor.execute(query)
+    number_of_pass = cursor.fetchone()['count(*)']
+    if number_of_pass >= (num_seats * 0.7):
+        base_price *= 1.2
+
+    currTime = datetime.datetime.now()
+    date = currTime.strftime("\'%Y-%m-%d\'")
+    time = currTime.strftime("\'%H:%M:00\'")
+
+    query = f'''SELECT ticket_id FROM Ticket ORDER BY ticket_id DESC LIMIT 1'''
+    cursor.execute(query)
+    ticket_id = cursor.fetchone()['ticket_id'] # get the last ticket_id, add 1
+    ticket_id += 1
+    if ticket_id > 99999999: # all possible ticket_id already used, need to wrap back to 0
+        ticket_id = 0
+    if request.method == "POST":
+        query = f'''insert into Purchases values ({ticket_id}, \'{session['Username']}\', null, {base_price}, {date}, {time}, \'{request.form['cardType']}\', {request.form['cardNumber']}, \'{request.form['cardName']}\', \'{request.form['expDate']}\')'''
+        cursor.execute(query)
+        query = f'''insert into ticket values ({ticket_id}, \'{airline_name}\', {flight_num})'''
+        cursor.execute(query)
+        error = "Succesful Purchase!"
+    cursor.close()
+    return render_template("customer.html", name=airline_name, number=flight_num, price=base_price, error=error, date=depDate, time=depTime)
 
 
 @app.route('/logout', methods=["GET"])
