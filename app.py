@@ -144,6 +144,30 @@ def registerStaff():
             return redirect(url_for('login'))
     return render_template("staff.html", error=error)
 
+@app.route("/public_search", methods=["GET", "POST"])
+def public_search():
+    error = None
+    cursor = conn.cursor()
+    query = ""
+    valid = {}
+    valid["flight_number"] = request.form['flight_num']
+    valid["departure_airport"] = request.form['source_city']
+    valid["arrival_airport"] = request.form['dest_city']
+    valid["departure_date"] = request.form['departure_date']
+    valid["arrival_date"] = request.form['arrival_date']
+
+    query = "select * from flight where "
+    for item in valid:
+        if valid[item] != "":
+            query += item + " = \"" + valid[item] + "\" and "
+    query = query[:-5]
+
+    cursor.execute(query)
+    results = cursor.fetchall()
+    cursor.close()
+
+    return render_template("index.html", error=error, results=results)
+
 
 @app.route("/customerFlight", methods=["GET"])
 @require_cust_login
