@@ -21,11 +21,21 @@
     <div class="org">
         <div class="db">
             <p class="sign_in">Public Database</p>
-            <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
-            <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
-            <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
-            <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
-            <button class="search_button">Search</button>
+            <form method="post" action="/public_search">
+                <div>
+                    <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
+                    <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
+                    <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
+                </div>
+
+                <div>
+                    <input type="text" class="info_input" name="departure_date" id="departure_date" placeholder="Departure Date">
+                    <input type="text" class="info_input" name="arrival_date" id="arrival_date" placeholder="Arrival Date">
+                    <button class="search_button" onclick="public_search()">Search</button>
+                    
+                </div>
+            </form>
+            
             {% for result in results %}
                 <p> {{result}} </p> 
             {% endfor %}
