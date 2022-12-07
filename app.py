@@ -3,6 +3,8 @@ import pymysql
 import hashlib
 from functools import wraps
 import datetime
+from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 
 app = Flask(__name__)
 app.secret_key = "secret key"
@@ -56,9 +58,9 @@ def login():
     if request.method == 'POST':
         #check if they already have credentials in the DB
         hexHashPass = hashlib.md5(request.form['Password'].encode()).hexdigest()
-        customerQuery = "select * from Customer where customer_email = \"" + request.form['Username'] + "\" AND password = \"" \
+        customerQuery = "select * from customer where customer_email = \"" + request.form['Username'] + "\" AND password = \"" \
                         + hexHashPass + "\""
-        staffQuery = "select * from Staff where username = \"" + request.form['Username'] + "\" AND password = \"" \
+        staffQuery = "select * from staff where username = \"" + request.form['Username'] + "\" AND password = \"" \
                         + hexHashPass + "\""
 
         if cursor.execute(customerQuery):  # successful login attempt for customer
@@ -70,7 +72,7 @@ def login():
             session["Username"] = request.form["Username"]
             session["userType"] = "staff"
 
-            query = f'''select airline_name from Staff where username = \'{session["Username"]}\''''
+            query = f'''select airline_name from staff where username = \'{session["Username"]}\''''
             cursor.execute(query)
             airline_name = cursor.fetchone()['airline_name']
             session['airline_name'] = airline_name
@@ -100,14 +102,14 @@ def registerCustomer():
     error = None
     if request.method == "POST":
         cursor = conn.cursor()
-        query = "select * from Customer where customer_email = \"" + request.form['cust_email'] + '\"'
+        query = "select * from customer where customer_email = \"" + request.form['cust_email'] + '\"'
         if cursor.execute(query):
             error = "Account with email already exists, please use a different email"
             return render_template("index.html", error=error)
         passHash = request.form['cust_password']
         hashedPass = hashlib.md5(passHash.encode())
         hexHashPass = hashedPass.hexdigest()
-        query = f'''INSERT INTO Customer VALUES (\'{request.form['cust_name']}\', \'{request.form['cust_email']}\', 
+        query = f'''INSERT INTO customer VALUES (\'{request.form['cust_name']}\', \'{request.form['cust_email']}\', 
                 \'{hexHashPass}\', {request.form['cust_build_num']}, \'{request.form['cust_street']}\', 
                 \'{request.form['cust_city']}\', \'{request.form['cust_state']}\', {request.form['cust_phone_number']}, {request.form['cust_passport_number']},
                 \'{request.form['cust_passport_expiration']}\', \'{request.form['cust_passport_country']}\', \'{request.form['cust_dob']}\')'''
@@ -122,7 +124,7 @@ def registerStaff():
     error = None
     if request.method == "POST":
         cursor = conn.cursor()
-        query = "select * from Staff where username = \"" + request.form['staff_username'] + '\"'
+        query = "select * from staff where username = \"" + request.form['staff_username'] + '\"'
         if cursor.execute(query):
             error = "Account with username already exists, please use a different username"
             return render_template("index.html", error=error)
@@ -130,14 +132,14 @@ def registerStaff():
         passHash = request.form['staff_password']
         hashedPass = hashlib.md5(passHash.encode())
         hexHashPass = hashedPass.hexdigest()
-        query = f'''INSERT INTO Staff VALUES (\'{request.form['staff_username']}\', \'{hexHashPass}\',  
+        query = f'''INSERT INTO staff VALUES (\'{request.form['staff_username']}\', \'{hexHashPass}\',  
                 \'{request.form['staff_first_name'] + " " + request.form['staff_last_name']}\', \'{request.form['staff_email']}\', \'{request.form['staff_dob']}\', \'{request.form['staff_airline']}\')'''
         if cursor.execute(query):
 
             numbers = [request.form['staff_phone_number']]
             numbers.extend(request.form["staff_additional_phone_number"].split(", "))
             for num in numbers:
-                query = f'''insert into StaffPhones values (\'{request.form['staff_username']}\', {num})'''
+                query = f'''insert into staffphones values (\'{request.form['staff_username']}\', {num})'''
                 cursor.execute(query)
 
             cursor.close()
@@ -169,21 +171,70 @@ def public_search():
     return render_template("index.html", error=error, results=results)
 
 
+@app.route("/cancelTrip", methods=["GET", "POST"])
+@require_cust_login
+def cancelTrip():
+    # We assume the cancelled flight is valid and in more than 24 hours
+    cursor = conn.cursor()
+    ticketID = request.form["ticket_id"]
+    updateQuery = "UPDATE ticket SET customer_email = NULL WHERE customer_email = \"" + session['Username'] + "\" AND ticket_id = \"" + ticketID + "\""
+    if not cursor.execute(updateQuery):
+        error="Unsuccessful cancellation. Please try again."
+        cursor.close()
+        return render_template('customer.html', error=error)
+
+    conn.commit()
+
+    # delete the ticket from the purchase table
+    deleteQuery = "DELETE FROM purchase WHERE email = \"" + session['Username'] + "\" AND ticket_id = \"" + ticketID + "\""
+    if not cursor.execute(deleteQuery):
+        error="Unseccessful cancellation. Please try again"
+        return render_template("customer.html", error=error)
+    conn.commit()
+    cursor.close()
+    return render_template("customer.html", results="Ticket cancelled successully")
+
+
+@app.route("/customerSearch", methods=["GET"])
+@require_cust_login
+def customerSearch():
+    error = None
+    cursor = conn.cursor()
+    valid = {}
+    valid["flight_number"] = request.form['flight_num']
+    valid["departure_airport"] = request.form['source_city']
+    valid["arrival_airport"] = request.form['dest_city']
+    valid["departure_date"] = request.form['departure_date']
+    valid["arrival_date"] = request.form['arrival_date']
+
+    query = "select * from flight where "
+    for item in valid:
+        if valid[item] != "":
+            query += item + " = \"" + valid[item] + "\" and "
+    query = query[:-5]
+
+    cursor.execute(query)
+    results = cursor.fetchall()
+    cursor.close()
+
+    return render_template("customer.html", error=error, results=results)
+
+
 @app.route("/customerFlight", methods=["GET"])
 @require_cust_login
 def customerFlights():
     cursor = conn.cursor()
-    query = "select ticket_id from Purchases where customer_email = \"" + session['Username'] + "\""
+    query = "select ticket_id from purchases where customer_email = \"" + session['Username'] + "\""
     cursor.execute(query)
     ticketIDs = cursor.fetchall()
-    query = "select flight_number from Ticket where ticket_id = "
+    query = "select flight_number from ticket where ticket_id = "
     for ticket in ticketIDs:
         query += str(ticket.get('ticket_id'))
         query += " or ticket_id = "
     query += " -1 "
     cursor.execute(query)
     flight_nums = cursor.fetchall()
-    query = "select * from Flight where (CURRENT_DATE < Flight.departure_date OR (CURRENT_DATE = Flight.departure_date " \
+    query = "select * from flight where (CURRENT_DATE < flight.departure_date OR (CURRENT_DATE = flight.departure_date " \
             "AND CURRENT_TIME < departure_time)) and (flight_number = "
     for flight in flight_nums:
         query += str(flight.get("flight_number")) + " or flight_number = "
@@ -199,7 +250,7 @@ def customerFlights():
 def rateFlight():
     cursor = conn.cursor()
     error = ""
-    query = f'''SELECT * FROM Purchases NATURAL JOIN Ticket NATURAL JOIN Flight WHERE customer_email = \'{session['Username']}\' AND arrival_date < CURRENT_DATE()'''
+    query = f'''SELECT * FROM purchases NATURAL JOIN ticket NATURAL JOIN flight WHERE customer_email = \'{session['Username']}\' AND arrival_date < CURRENT_DATE()'''
     cursor.execute(query)
     results = cursor.fetchall()
     if request.method == "POST":
@@ -211,7 +262,7 @@ def rateFlight():
 
 
         # We decided to only allow for a customer to rate a flight if they have not done so already
-        query = f'''select customer_email, flight_number from Rates where customer_email = \'{customerEmail}\' and flight_number = {flightNum}'''
+        query = f'''select customer_email, flight_number from rates where customer_email = \'{customerEmail}\' and flight_number = {flightNum}'''
         if cursor.execute(query):
             error = "You already rated this flight!"
         else:
@@ -243,7 +294,7 @@ def customerSpending():
 
 
     cursor = conn.cursor()
-    query = f'''SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\''''
+    query = f'''SELECT sold_price from purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\''''
     cursor.execute(query)
 
     totalSpent = 0
@@ -259,7 +310,7 @@ def customerSpending():
     if currMonth >= 6:  # we can easily get the previous 6 months
         bar_labels = months[currMonth - 6 : currMonth]
         for mon in range(1, currMonth + 1):
-            query = f'''SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr}'''
+            query = f'''SELECT sold_price from purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr}'''
             cursor.execute(query)
             monthlySpending = 0
             # calculate the amount spent for the current month
@@ -295,7 +346,7 @@ def customerSpending():
 
 
         months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-        query = f''' SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\' and purchase_date < \'{date2}\''''
+        query = f''' SELECT sold_price from purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\' and purchase_date < \'{date2}\''''
         cursor.execute(query)
         totalSpent = 0
         for price in cursor.fetchall():
@@ -321,7 +372,7 @@ def customerSpending():
         for mon in range(monthDiff + 1):
             monthNum = loop_date.strftime("%m")
             yearNum = loop_date.strftime("%Y")
-            query = f'''SELECT sold_price from Purchases where customer_email = \'{session['Username']}\' AND month(purchase_date) = {monthNum} AND year(purchase_date) = {yearNum} AND purchase_date <= \'{datetime2.strftime("%Y-%m-%d")}\' and purchase_date >= \'{datetime1.strftime("%Y-%m-%d")}\''''
+            query = f'''SELECT sold_price from purchases where customer_email = \'{session['Username']}\' AND month(purchase_date) = {monthNum} AND year(purchase_date) = {yearNum} AND purchase_date <= \'{datetime2.strftime("%Y-%m-%d")}\' and purchase_date >= \'{datetime1.strftime("%Y-%m-%d")}\''''
             cursor.execute(query)
             monthlySpending = 0
             for item in cursor.fetchall():
@@ -337,21 +388,21 @@ def customerSpending():
 @require_staff_login
 def staffFlights():
     cursor = conn.cursor()
-    query = "select airline_name from Staff where username = \"" + session['Username'] + "\""
+    query = "select airline_name from staff where username = \"" + session['Username'] + "\""
     cursor.execute(query)
     airlineName = cursor.fetchone().get("airline_name")
-    query = "select * from Flights where airline_name = \"" + airlineName + "\""
+    query = "select * from flights where airline_name = \"" + airlineName + "\""
     cursor.execute(query)
 
     customer_list = []
 
-    query = f"Select flight_number from Flight where airline_name = \'{airlineName}\' and ((CURRENT_DATE < " \
-            f"Flight.departure_date) OR (CURRENT_TIME < departure_time AND CURRENT_DATE = Flight.departure_date)) and" \
-            f"(Flight.departure_date < ADDDATE(CURRENT_DATE, INTERVAL 30 DAY))"
+    query = f"Select flight_number from flight where airline_name = \'{airlineName}\' and ((CURRENT_DATE < " \
+            f"flight.departure_date) OR (CURRENT_TIME < departure_time AND CURRENT_DATE = flight.departure_date)) and" \
+            f"(flight.departure_date < ADDDATE(CURRENT_DATE, INTERVAL 30 DAY))"
 
     cursor.execute(query)
     flightNums = cursor.fetchall()
-    query = "select * from Flight where flight_number = "
+    query = "select * from flight where flight_number = "
     for flight in flightNums:
         query += str(flight.get('flight_number')) + " or flight_number ="
     query += " -1 "
@@ -359,7 +410,7 @@ def staffFlights():
     results = cursor.fetchall()
     for number in flightNums:
         curr_num = number.get("flight_number")
-        query = f'''SELECT Customer.name from Ticket NATURAL JOIN Purchases NATURAL JOIN Customer where Ticket.flight_number = {curr_num}'''
+        query = f'''SELECT customer.name from ricket NATURAL JOIN purchases NATURAL JOIN customer where ticket.flight_number = {curr_num}'''
         cursor.execute(query)
         cust_names = cursor.fetchall()
         list_of_names = []
@@ -378,7 +429,7 @@ def addAirport():
     error = None
     if request.method == "POST":
         cursor = conn.cursor()
-        query = f'''insert into Airport values (\'{request.form['airport_name']}\', \'{request.form['source_city']}'''
+        query = f'''insert into airport values (\'{request.form['airport_name']}\', \'{request.form['source_city']}'''
         cursor.execute(query)
         cursor.close()
     return render_template("staff.html", error=error)
@@ -390,7 +441,7 @@ def addAirplane():
     error = None
     if request.method == "POST":
         cursor = conn.cursor()
-        query = f'''insert into Airplane values (\'{request.form['airplane_ID']}\', \'{request.form['num_of_seats']}\', \'{request.form['airline_name']}'''
+        query = f'''insert into airplane values (\'{request.form['airplane_ID']}\', \'{request.form['num_of_seats']}\', \'{request.form['airline_name']}'''
         cursor.execute(query)
         cursor.close()
     return render_template("staff.html", error=error)
@@ -407,7 +458,7 @@ def addFlight():
         else:
             status = "Delayed"
         cursor = conn.cursor()
-        query = f'''insert into Flight values (\'{session['airline_name']}\', \'{status}\', \'{request.form['flight_num']}\', \'{request.form['source_city']}\', \'{request.form['departure_date']}\', 
+        query = f'''insert into flight values (\'{session['airline_name']}\', \'{status}\', \'{request.form['flight_num']}\', \'{request.form['source_city']}\', \'{request.form['departure_date']}\', 
                 \'{request.form['departure_time']}\', \'{request.form['dest_city']}\', \'{request.form['return_date']}\', \'{request.form['return_time']}\', \
                 \'{request.form['base_price']}\', \'{request.form['airplane_ID']}'''
         cursor.execute(query)
@@ -426,7 +477,7 @@ def changeStatus():
             status = "On Time"
         else:
             status = "Delayed"
-        query = f'''update Flight set status = \'{status}\' where flight_number = \'{request.form['flight_num']}\' and departure_date = \'{request.form['departure_date']}\' and departure_time = \'{request.form['departure_time']}\''''
+        query = f'''update flight set status = \'{status}\' where flight_number = \'{request.form['flight_num']}\' and departure_date = \'{request.form['departure_date']}\' and departure_time = \'{request.form['departure_time']}\''''
         cursor.execute(query)
         cursor.close()
     return render_template("staff.html", error=error)
@@ -442,13 +493,13 @@ def frequentFliers():
     flights = []
 
     date = datetime.datetime.now() - datetime.timedelta(days=365)
-    query = f'''SELECT customer_email, count(ticket_id) FROM Purchases NATURAL JOIN Ticket WHERE airline_name = \'{session['airline_name']}\' AND purchase_date >= \'{date.strftime("%Y-%m-%d")}\' group by customer_email order by count(ticket_id) desc limit 5'''
+    query = f'''SELECT customer_email, count(ticket_id) FROM purchases NATURAL JOIN ticket WHERE airline_name = \'{session['airline_name']}\' AND purchase_date >= \'{date.strftime("%Y-%m-%d")}\' group by customer_email order by count(ticket_id) desc limit 5'''
     cursor.execute(query)
     # populate dictionary with customer email as key and number of tickets purchased as value
     for elem in cursor.fetchall():
         freq_dict[elem.get("customer_email")] = elem.get('count(ticket_id)')
     for cust_email in freq_dict.keys():
-        query = f'''SELECT * from Customer where customer_email = \'{cust_email}\''''
+        query = f'''SELECT * from customer where customer_email = \'{cust_email}\''''
         cursor.execute(query)
         result = cursor.fetchall()
         results.append(result)
@@ -456,7 +507,7 @@ def frequentFliers():
     # Get data on the specific flights
     for flier in results:
         email = flier[0].get('customer_email')
-        query = f'''SELECT flight_number from Ticket natural join Purchases where airline_name = \'{session['airline_name']}\' and customer_email = \'{email}\''''
+        query = f'''SELECT flight_number from ticket natural join purchases where airline_name = \'{session['airline_name']}\' and customer_email = \'{email}\''''
         cursor.execute(query)
         flight_list = cursor.fetchall()
         flights.append(flight_list)
@@ -468,17 +519,17 @@ def frequentFliers():
 @require_staff_login
 def ratings():
     cursor = conn.cursor()
-    query = "SELECT * from Flight where airline_name = \"" + session["airline_name"] + "\""
+    query = "SELECT * from flight where airline_name = \"" + session["airline_name"] + "\""
     cursor.execute(query)
     results = cursor.fetchall()
     if request.method == "POST":
         flight_num = request.form["flight_num"]
-        query = "SELECT AVG(`rating`) FROM `Rates` WHERE flight_number =" + flight_num
+        query = "SELECT AVG(`rating`) FROM `rates` WHERE flight_number =" + flight_num
         cursor.execute(query)
         avgRating = cursor.fetchone()["AVG(`rating`)"]
         if not avgRating:
             avgRating = 0
-        query = "SELECT customer_email, comment, rating FROM `Rates` WHERE flight_number =" + flight_num
+        query = "SELECT customer_email, comment, rating FROM `rates` WHERE flight_number =" + flight_num
         cursor.execute(query)
         results = cursor.fetchall()
         cursor.close()
@@ -519,9 +570,9 @@ def reports():
             month_num = loop_date.strftime("%m")
             year_num = loop_date.strftime("%Y")
             loop_date = changeInMonths(loop_date, -1)
-            query = f'''SELECT count(ticket_id) FROM Ticket NATURAL JOIN Purchases WHERE Ticket.airline_name = \'{session['airline_name']}\' 
-            and extract(month from Purchases.purchase_date) = {month_num} 
-            AND extract(year from  Purchases.purchase_date) = {year_num}
+            query = f'''SELECT count(ticket_id) FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{session['airline_name']}\' 
+            and extract(month from purchases.purchase_date) = {month_num} 
+            AND extract(year from  purchases.purchase_date) = {year_num}
             and purchase_date <= \'{datetime2}\' and purchase_date >= \'{datetime1}\''''
             cursor.execute(query)
             num_tickets_sold = cursor.fetchone()['count(ticket_id)']
@@ -529,6 +580,80 @@ def reports():
         total = sum(values)
     cursor.close()
     return render_template("staff.html", old=beg_date, today=end_date, total=total, values=values, title=chartTitle, labels=bar_labels, max=100)
+
+
+# track monthly wise spending within specified range of dates
+@app.route('/specifyspending', methods=["GET", "POST"])
+@require_cust_login
+def specify_spending():
+    if request.method == "POST":
+        cursor = conn.cursor()
+        date1 = request.form['date1']
+        startDate = datetime.date(datetime.strptime(date1, '%Y-%m-%d'))
+        date2 = request.form['date2']
+        endDate = datetime.date(datetime.strptime(date2, '%Y-%m-%d'))
+
+
+        num_months = (endDate.year - startDate.year) * 12 + (endDate.month - startDate.month)
+
+        # find the total money spent in range of specified dates
+        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) >= DATE(\"" + startDate + "\") AND DATE(purchase_date_time) <= DATE(\"" + endDate + "\")"
+        if cursor.execute(query):
+            total = cursor.fetchone()['total_spent']
+        else:
+            total = 0
+
+        # money spent in range by month
+        dict = {}
+        for mon in range(num_months):
+            query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) <= DATE_ADD(DATE(\"" + startDate + "\"), INTERVAL 1 MONTH) AND DATE(purchase_date_time) >= DATE(\"" + startDate + "\")"
+            cursor.execute(query)
+            results = cursor.fetchone()['total_spent']
+            if not results:
+                results = 0
+            prev_date = startDate
+            startDate += relativedelta(months=1)
+            interval = str(prev_date) + ' - ' + str(startDate)
+            dict[mon + 1] = (interval, results)
+
+
+        months = [month for month in range(1, num_months + 1)]
+        cursor.close()
+        return render_template('spending_results.html', total=total, dict=dict, months=months)
+    return render_template('specify_spending.html')
+
+
+@app.route("/trackSpending")
+@require_cust_login
+def trackSpending():
+    cursor = conn.cursor()
+    # total money spent in the past year
+    query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 YEAR)"
+    if cursor.execute(query):
+        total = cursor.fetchone()['total_spent']
+    else:
+        total = 0
+
+
+    # month wise total and total money spent in the last 6 months
+    dict = {}
+    month_total = 0
+    today = datetime.date(datetime.now())
+    for mon in range(6):
+        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) >= DATE_ADD(DATE(\"" + str(today) + "\"), INTERVAL -1 MONTH) AND DATE(purchase_date_time) <= DATE(\"" + str(today) + "\")"
+        cursor.execute(query)
+        results = cursor.fetchone()['total_spent']
+        if results is not None:
+            month_total += results
+        else:
+            results = 0
+        prev_date = today
+        today -= relativedelta(months=1)
+        interval = str(today) + ' - ' + str(prev_date)
+        dict[mon + 1] = (interval, results)
+    months = [num for num in range(6, 0, -1)]
+    cursor.close()
+    return render_template('track_spending.html', total=total, month_total=month_total, dict=dict, months=months)
 
 
 @app.route("/revenue")
@@ -545,7 +670,7 @@ def revenue():
     one_month_ago = today - datetime.timedelta(days = 30)
     one_year_ago = today - datetime.timedelta(days = 365)
     # revenue from last month
-    query = f'''SELECT sum(sold_price) FROM Ticket NATURAL JOIN Purchases WHERE Ticket.airline_name = \'{airline_name}\' and Purchases.purchase_date >= \'{one_month_ago.strftime("%Y-%m-%d")}\''''
+    query = f'''SELECT sum(sold_price) FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{airline_name}\' and purchases.purchase_date >= \'{one_month_ago.strftime("%Y-%m-%d")}\''''
     cursor.execute(query)
     month_rev = cursor.fetchone()['sum(sold_price)']
     if month_rev:
@@ -554,7 +679,7 @@ def revenue():
         month_values.append(0)
 
     # revenue from last year
-    query = f'''SELECT sum(sold_price) FROM Ticket NATURAL JOIN Purchases WHERE Ticket.airline_name = \'{airline_name}\' AND Purchases.purchase_date >= \'{one_year_ago.strftime("%Y-%m-%d")}\''''
+    query = f'''SELECT sum(sold_price) FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{airline_name}\' AND purchases.purchase_date >= \'{one_year_ago.strftime("%Y-%m-%d")}\''''
     cursor.execute(query)
     year_rev = cursor.fetchone()['sum(sold_price)']
     if (year_rev):
@@ -578,15 +703,15 @@ def customerPurchase(flight_info):
     depDate = results[3]
     depTime = results[4]
 
-    query = f'''select airplane_id from Flight where flight_number = {flight_num} and departure_date = \'{depDate}\' and departure_time = \'{depTime}\''''
+    query = f'''select airplane_id from flight where flight_number = {flight_num} and departure_date = \'{depDate}\' and departure_time = \'{depTime}\''''
     cursor.execute(query)
     airplane_id = cursor.fetchone()['airplane_id']
-    query = f'''select num_seats from Airplane where airplane_id = {airplane_id}'''
+    query = f'''select num_seats from airplane where airplane_id = {airplane_id}'''
     cursor.execute(query)
 
     num_seats = cursor.fetchone()['num_seats']
 
-    query = f'''select count(*) from Ticket where flight_number = {flight_num}'''
+    query = f'''select count(*) from ticket where flight_number = {flight_num}'''
     cursor.execute(query)
     number_of_pass = cursor.fetchone()['count(*)']
     if number_of_pass >= (num_seats * 0.7):
@@ -596,14 +721,14 @@ def customerPurchase(flight_info):
     date = currTime.strftime("\'%Y-%m-%d\'")
     time = currTime.strftime("\'%H:%M:00\'")
 
-    query = f'''SELECT ticket_id FROM Ticket ORDER BY ticket_id DESC LIMIT 1'''
+    query = f'''SELECT ticket_id FROM ticket ORDER BY ticket_id DESC LIMIT 1'''
     cursor.execute(query)
     ticket_id = cursor.fetchone()['ticket_id'] # get the last ticket_id, add 1
     ticket_id += 1
     if ticket_id > 99999999: # all possible ticket_id already used, need to wrap back to 0
         ticket_id = 0
     if request.method == "POST":
-        query = f'''insert into Purchases values ({ticket_id}, \'{session['Username']}\', null, {base_price}, {date}, {time}, \'{request.form['cardType']}\', {request.form['cardNumber']}, \'{request.form['cardName']}\', \'{request.form['expDate']}\')'''
+        query = f'''insert into purchases values ({ticket_id}, \'{session['Username']}\', null, {base_price}, {date}, {time}, \'{request.form['cardType']}\', {request.form['cardNumber']}, \'{request.form['cardName']}\', \'{request.form['expDate']}\')'''
         cursor.execute(query)
         query = f'''insert into ticket values ({ticket_id}, \'{airline_name}\', {flight_num})'''
         cursor.execute(query)

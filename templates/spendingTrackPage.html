@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <nav>
+            <div>
+                <a href="/specifyspending">Spending For Specified Dates</a>
+                <a href="/customer">Go Back</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </nav>
+        <title>Air Ticket Reservation System | Track My Monthly Spending </title>
+    </head>
+    <body>
+        <h1>Track My Monthly Spending</h1>
+        <h3>Total Spent In The Last Year: ${{total}}</h3>
+        <br>
+        <hr>
+        <br>
+        <br>
+        <h3>Total Spent In The Past 6 Months: ${{month_total}}</h3>
+        <h3>Monthly-Wise Spending In The Past 6 Months</h3>
+        <style>
+            table, th, td {
+              border:1px solid black;
+            }
+        </style>
+        <table style="width:85%">
+            <tr>
+                <th>Period of Time</th>
+                <th>Money Spent</th>
+            </tr>
+            {% for val in months %}
+            <tr>
+                <td>{{dict[val][0]}}</td>
+                <td>${{dict[val][1]}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <br>
+        </body>
+    <br>
+    <hr>
+</html>
