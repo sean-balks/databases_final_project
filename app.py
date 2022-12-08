@@ -3,7 +3,7 @@ import pymysql
 import hashlib
 from functools import wraps
 import datetime
-from datetime import datetime, date
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 app = Flask(__name__)
