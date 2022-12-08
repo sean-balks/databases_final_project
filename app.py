@@ -634,8 +634,7 @@ def customerPurchase():
 
     airline_name = request.form['airline_name']
     flight_number = request.form['flight_num']
-    departure_date = request.form['departure_date']
-    departure_time = request.form['departure_time']
+
 
     card_type = request.form['card_type']
     card_number = request.form['card_number']
@@ -649,8 +648,7 @@ def customerPurchase():
         return render_template("customer.html", error=error)
 
     query = "SELECT num_of_seats FROM flight natural join airplane where airline_name = \"" + airline_name + \
-            "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + \
-            "\" and departure_time = \"" + departure_time + "\""
+            "\" and flight_number = \"" + flight_number + "\""
     cursor.execute(query)
     flight_capacity = cursor.fetchone()["num_of_seats"]
 
@@ -659,14 +657,12 @@ def customerPurchase():
     num_tickets = cursor.fetchone()['num_tickets']
 
     query = "SELECT COUNT(ticket_id) as num_seats_bought FROM ticket natural join flight natural joing purchase where airline_name = \"" \
-            + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date \
-            + "\" and departure_time = \"" + departure_time + "\" and customer_email IS NOT NULL"
+            + airline_name + "\" and flight_number = \"" + flight_number + "\" and customer_email IS NOT NULL"
     cursor.execute(query)
     num_seats_bought = cursor.fetchone()['num_seats_bought']
 
     query = "SELECT base_price FROM flight natural join airplane where airline_name = \"" + airline_name +\
-            "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + \
-            "\" and departure_time = \"" + departure_time + "\""
+            "\" and flight_number = \"" + flight_number + "\""
     cursor.execute(query)
     base_price = cursor.fetchone()['base_price']
 
