@@ -709,6 +709,9 @@ def customerPurchase():
 @app.route('/logout', methods=["GET"])
 def logout():
     session.pop('Username')
+    if session["userType"] == "staff":
+        session.pop("airline_name")
+    session.pop("userType")
     return render_template("index.html", error="Successfully logged out")
 
 
