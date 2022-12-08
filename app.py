@@ -343,7 +343,7 @@ def addAirplane():
 @require_staff_login
 def staffviewflights():
     cursor = conn.cursor()
-    query = "select * from flights where airline = " + session['airline_name'] + " and departure_date > curdate() and departure_date < date_add(now(), interval 30 day)"
+    query = "select * from flights where airline = \"" + session['airline_name'] + "\" and departure_date > CURRENT_DATE and departure_date < date_add(now(), interval 30 day)"
     cursor.execute(query)
     results = cursor.fetchall()
     return render_template("staff.html", results=results)
