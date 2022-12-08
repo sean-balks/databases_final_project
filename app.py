@@ -604,7 +604,7 @@ def reports():
 
         mons = [mon for mon in range(1,num_of_months+1)]
         cursor.close()
-        return render_template("report.html", year_dict=year_dict, results=results, mons=mons)
+        return render_template("report.html", year_dict=year_dict, results=total_tix, mons=mons)
     return render_template("staff.html")
 
 
@@ -624,7 +624,7 @@ def specify_spending():
         num_months = (endDate.year - startDate.year) * 12 + (endDate.month - startDate.month)
 
         # find the total money spent in range of specified dates
-        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) >= DATE(\"" + startDate + "\") AND DATE(purchase_date_time) <= DATE(\"" + endDate + "\")"
+        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\") AND DATE(purchase_date) <= DATE(\"" + str(endDate) + "\")"
         if cursor.execute(query):
             total = cursor.fetchone()['total_spent']
         else:
@@ -633,7 +633,7 @@ def specify_spending():
         # money spent in range by month
         dict = {}
         for mon in range(num_months):
-            query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) <= DATE_ADD(DATE(\"" + startDate + "\"), INTERVAL 1 MONTH) AND DATE(purchase_date_time) >= DATE(\"" + startDate + "\")"
+            query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) <= DATE_ADD(DATE(\"" + str(startDate) + "\"), INTERVAL 1 MONTH) AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\")"
             cursor.execute(query)
             results = cursor.fetchone()['total_spent']
             if not results:
@@ -646,8 +646,8 @@ def specify_spending():
 
         months = [month for month in range(1, num_months + 1)]
         cursor.close()
-        return render_template('spending_results.html', total=total, dict=dict, months=months)
-    return render_template('specify_spending.html')
+        return render_template('spendingRangeResults.html', total=total, dict=dict, months=months)
+    return render_template('customer.html')
 
 
 @app.route("/trackSpending")
@@ -655,7 +655,7 @@ def specify_spending():
 def trackSpending():
     cursor = conn.cursor()
     # total money spent in the past year
-    query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 YEAR)"
+    query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 YEAR)"
     if cursor.execute(query):
         total = cursor.fetchone()['total_spent']
     else:
@@ -667,7 +667,7 @@ def trackSpending():
     month_total = 0
     today = datetime.date(datetime.now())
     for mon in range(6):
-        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date_time) >= DATE_ADD(DATE(\"" + str(today) + "\"), INTERVAL -1 MONTH) AND DATE(purchase_date_time) <= DATE(\"" + str(today) + "\")"
+        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) >= DATE_ADD(DATE(\"" + str(today) + "\"), INTERVAL -1 MONTH) AND DATE(purchase_date) <= DATE(\"" + str(today) + "\")"
         cursor.execute(query)
         results = cursor.fetchone()['total_spent']
         if results is not None:
@@ -680,7 +680,7 @@ def trackSpending():
         dict[mon + 1] = (interval, results)
     months = [num for num in range(6, 0, -1)]
     cursor.close()
-    return render_template('track_spending.html', total=total, month_total=month_total, dict=dict, months=months)
+    return render_template('spendingTrackPage.html.html', total=total, month_total=month_total, dict=dict, months=months)
 
 
 @app.route("/revenue")

@@ -7,7 +7,7 @@
                 <a href="/logout">Logout</a>
             </div>
         </nav>
-        <title>Air Ticket Reservation System | Track My Monthly Spending For Specified Dates</title>
+        <title>Track My Monthly Spending For Specified Dates</title>
     </head>
     <body>
         <h1>Track My Monthly Spending For Specified Dates</h1>
@@ -23,13 +23,13 @@
         </style>
         <table style="width:85%">
             <tr>
-                <th>Date Range</th>
+                <th>Range of Dates</th>
                 <th>Money Spent</th>
             </tr>
-                {% for val in months %}
+                {% for mon in months %}
                     <tr>
-                    <td>{{dict[val][0]}}</td>
-                    <td>${{dict[val][1]}}</td>
+                    <td>{{dict[mon][0]}}</td>
+                    <td>${{dict[mon][1]}}</td>
                     </tr>
                 {% endfor %}
         </table>
