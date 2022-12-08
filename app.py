@@ -680,26 +680,14 @@ def customerPurchase():
         return render_template("customer.html", error=error)
 
     # flight has seats open, need to make new ticket
-    query = "SELECT * FROM purchase where airline_name = \""+ airline_name +"\" and flight_number = \"" + flight_number \
-            + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + \
-            "\" and customer_email IS NULL"
-    cursor.execute(query)
-    existing_tickets = cursor.fetchall()
 
-    if existing_tickets:
-        ticket_id = existing_tickets[0]['ticket_id']
-        update = "UPDATE purchase SET customer_email = \""+ cust_email +"\", sold_price = \""+ price_of_ticket +\
-                 "\" where ticket_id = \""+ ticket_id +"\""
-        cursor.execute(update)
-        conn.commit()
-    else:       # need to create new ticket
-        ticket_id = num_tickets + 1
-        query = "INSERT INTO ticket VALUES(\""+ ticket_id +"\", \""+ airline_name +"\", \""+ flight_number +"\")"
-        if not cursor.execute(query):
-            error="Error occured. Please attempt purchase again"
-            cursor.close()
-            return render_template("customer.html", error=error)
-        conn.commit()
+    ticket_id = num_tickets + 1
+    query = "INSERT INTO ticket VALUES(\""+ ticket_id +"\", \""+ airline_name +"\", \""+ flight_number +"\")"
+    if not cursor.execute(query):
+        error="Error occured. Please attempt purchase again"
+        cursor.close()
+        return render_template("customer.html", error=error)
+    conn.commit()
 
     currTime = datetime.datetime.now()
     date = currTime.strftime("\'%Y-%m-%d\'")
