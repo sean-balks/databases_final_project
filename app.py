@@ -276,7 +276,7 @@ def changeInMonths(date, rotation):
     return date.replace(day=day, month=mon, year=year)
 
 
-@app.route("/staffflights", methods=["GET"])
+@app.route("/staffflights", methods=["GET", "POST"])
 @require_staff_login
 def staffFlights():
     cursor = conn.cursor()
