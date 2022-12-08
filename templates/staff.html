@@ -19,8 +19,8 @@
 
     <div class="db">
         <p class="sign_in">Access Database</p>
+        <form method="post" action="">
         <div>
-            <form method="post" action="">
                 <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
                 <input type="text" class="info_input" name="airline_name" id="airline_name" placeholder="Airline Name">
                 <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
@@ -28,11 +28,9 @@
                 <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
                 <input type="text" class="info_input" name="flight_id" id="flight_id" placeholder="Flight ID">
                 <input type="number" class="info_input" name="base_price" id="base_price" placeholder="Base Flight Price">
-            </form>
         </div>
 
         <div>
-            <form method="post" action="">
                 <input type="text" class="info_input" name="departure_date" id="departure_date" placeholder="Departure Date">
                 <input type="text" class="info_input" name="departure_time" id="departure_time" placeholder="Departure Time">
                 <input type="text" class="info_input" name="return_date" id="return_date" placeholder="Return Date">
@@ -43,7 +41,6 @@
                 <input type="text" class="info_input" name="airplane_ID" id="airplane_ID" placeholder="Airplane ID">
                 <input type="text" class="info_input" name="reportDate1" id="reportDate1" placeholder="Report Date 1">
                 <input type="text" class="info_input" name="reportDate2" id="reportDate2" placeholder="Report Date 2">
-            </form>
         </div>
 
         <button class="search_button" formaction="/staffflights" onclick="staffFlights()" id="search">Search</button>
@@ -52,6 +49,9 @@
         <button class="search_button" formaction="/addairplane" onclick="addAirplane()" id="add_airplane">Add Airplane</button>
         <button class="search_button" formaction="/addairport" onclick="addAirport()" id="add_airport">Add Airport</button>
         <button class="search_button" formaction="/ratings" onclick="ratings()" id="view_ratings">View Flight Ratings</button>
+        <button class="search_button" formaction="/staffviewflights" onclick="viewFlights()" id="search">View My Flights</button>
+
+        </form>
 
         {% for result in results %}
             <p> {{result}} </p> 
@@ -68,6 +68,7 @@
     </div>
 
     <div class="box">
+        <form method="get">
         <p class="sign_in">Actions</p>
         <button class="search_button" formaction="/frequentfliers" onclick="frequentFliers()" id="view_frequent_customers">View Frequent Customers</button>
         <div><button class="search_button" formaction="/reportsDefault" onclick="reportsDefault()" id="view_default_reports">View Default Reports</button></div>
@@ -75,6 +76,8 @@
 
         <div><button class="search_button" formaction="/revenue" onclick="revenue()" id="view_revenue">View Earned Revenue</button></div>
         <a href="/logout"><button class="search_button" id="logout" onclick="logout()">Logout</button></a>
+
+        </form>
 
     </div>
 
