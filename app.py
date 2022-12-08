@@ -133,7 +133,7 @@ def registerStaff():
         hashedPass = hashlib.md5(passHash.encode())
         hexHashPass = hashedPass.hexdigest()
         query = f'''INSERT INTO staff VALUES (\'{request.form['staff_username']}\', \'{hexHashPass}\',  
-                \'{request.form['staff_first_name'] + " " + request.form['staff_last_name']}\', \'{request.form['staff_email']}\', \'{request.form['staff_dob']}\', \'{request.form['staff_airline']}\')'''
+                \'{request.form['staff_first_name'] + " " + request.form['staff_last_name']}\', \'{request.form['staff_dob']}\', \'{request.form['staff_airline']}\')'''
         if cursor.execute(query):
 
             numbers = [request.form['staff_phone_number']]
@@ -189,7 +189,7 @@ def cancelTrip():
     return render_template("customer.html", error="Ticket cancelled successully")
 
 
-@app.route("/customerSearch", methods=["GET"])
+@app.route("/customerSearch", methods=["GET", "POST"])
 @require_cust_login
 def customerSearch():
     error = None
@@ -338,6 +338,15 @@ def addAirplane():
         cursor.close()
     return render_template("staff.html", error=error)
 
+# NOT FINISHED YET - Query broken
+@app.route("/staffviewflights", methods=["POST"])
+@require_staff_login
+def staffviewflights():
+    cursor = conn.cursor()
+    query = "select * from flights where airline = " + session['airline_name'] + " and departure_date > curdate() and departure_date < date_add(now(), interval 30 day)"
+    cursor.execute(query)
+    results = cursor.fetchall()
+    return render_template("staff.html", results=results)
 
 @app.route("/addflight", methods=["GET", "POST"])
 @require_staff_login
@@ -382,7 +391,7 @@ def frequentFliers():
     results = []
     flights = []
 
-    date = datetime.datetime.now() - datetime.timedelta(days=365)
+    date = datetime.now() - datetime.time(days=365)
     query = f'''SELECT customer_email, count(ticket_id) FROM purchases NATURAL JOIN ticket WHERE airline_name = \'{session['airline_name']}\' AND purchase_date >= \'{date.strftime("%Y-%m-%d")}\' group by customer_email order by count(ticket_id) desc limit 5'''
     cursor.execute(query)
     # populate dictionary with customer email as key and number of tickets purchased as value
@@ -624,7 +633,7 @@ def customerPurchase():
     cust_email = session['Username']
 
     airline_name = request.form['airline_name']
-    flight_number = request.form['flight_number']
+    flight_number = request.form['flight_num']
     departure_date = request.form['departure_date']
     departure_time = request.form['departure_time']
 
