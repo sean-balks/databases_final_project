@@ -146,6 +146,7 @@ def registerStaff():
             return redirect(url_for('login'))
     return render_template("staff.html", error=error)
 
+
 @app.route("/public_search", methods=["GET", "POST"])
 def public_search():
     error = None
@@ -177,13 +178,6 @@ def cancelTrip():
     # We assume the cancelled flight is valid and in more than 24 hours
     cursor = conn.cursor()
     ticketID = request.form["ticket_id"]
-    updateQuery = "UPDATE ticket SET customer_email = NULL WHERE customer_email = \"" + session['Username'] + "\" AND ticket_id = \"" + ticketID + "\""
-    if not cursor.execute(updateQuery):
-        error="Unsuccessful cancellation. Please try again."
-        cursor.close()
-        return render_template('customer.html', error=error)
-
-    conn.commit()
 
     # delete the ticket from the purchase table
     deleteQuery = "DELETE FROM purchase WHERE email = \"" + session['Username'] + "\" AND ticket_id = \"" + ticketID + "\""
@@ -192,7 +186,7 @@ def cancelTrip():
         return render_template("customer.html", error=error)
     conn.commit()
     cursor.close()
-    return render_template("customer.html", results="Ticket cancelled successully")
+    return render_template("customer.html", error="Ticket cancelled successully")
 
 
 @app.route("/customerSearch", methods=["GET"])
@@ -254,10 +248,9 @@ def rateFlight():
     cursor.execute(query)
     results = cursor.fetchall()
     if request.method == "POST":
-        form = request.form.to_dict()
-        custComment = form['comment']
-        custRating = form['rating']
-        flightNum = list(form)[2]
+        custComment = request.form['comment']
+        custRating = request.form['rating']
+        flightNum = request.form['flight_num']
         customerEmail = session['Username']
 
 
@@ -690,51 +683,86 @@ def revenue():
     return render_template("staff.html", title=graph_title, max=25000, m_val = month_values, y_val = year_values)
 
 
-@app.route("/customerPurchase/<flight_info>", methods=["POST", "GET"])
+@app.route("/customerPurchase", methods=["POST", "GET"])
 @require_cust_login
-def customerPurchase(flight_info):
+def customerPurchase():
     cursor = conn.cursor()
     error = None
-    results = flight_info.split("|")
-    flight_num = results[0]
+    cust_email = session['Username']
 
-    airline_name = results[1]
-    base_price = results[2]
-    depDate = results[3]
-    depTime = results[4]
+    airline_name = request.form['airline_name']
+    flight_number = request.form['flight_number']
+    departure_date = request.form['departure_date']
+    departure_time = request.form['departure_time']
 
-    query = f'''select airplane_id from flight where flight_number = {flight_num} and departure_date = \'{depDate}\' and departure_time = \'{depTime}\''''
+    card_type = request.form['card_type']
+    card_number = request.form['card_number']
+    card_name = request.form['card_name']
+    exp_date = request.form['card_expiration_date']
+
+    today = datetime.today().strftime('%Y-%m-%d')
+    if exp_date <= today:
+        error= "Card has expired. Try a valid card"
+        cursor.close()
+        render_template("customer.html", error=error)
+
+    query = "SELECT num_of_seats FROM flight natural join airplane where airline_name = \"" + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\""
     cursor.execute(query)
-    airplane_id = cursor.fetchone()['airplane_id']
-    query = f'''select num_seats from airplane where airplane_id = {airplane_id}'''
-    cursor.execute(query)
+    flight_capacity = cursor.fetchone()["num_of_seats"]
 
-    num_seats = cursor.fetchone()['num_seats']
-
-    query = f'''select count(*) from ticket where flight_number = {flight_num}'''
+    query = "SELECT COUNT(ticket_id) AS num_tickets FROM ticket"
     cursor.execute(query)
-    number_of_pass = cursor.fetchone()['count(*)']
-    if number_of_pass >= (num_seats * 0.7):
-        base_price *= 1.2
+    num_tickets = cursor.fetchone()['num_tickets']
+
+    query = "SELECT COUNT(ticket_id) as num_seats_bought FROM ticket natural join flight natural joing purchase where airline_name = \"" + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\" and customer_email IS NOT NULL"
+    cursor.execute(query)
+    num_seats_bought = cursor.fetchone()['num_seats_bought']
+
+    query = "SELECT base_price FROM flight natural join airplane where airline_name = \"" + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\""
+    cursor.execute(query)
+    base_price = cursor.fetchone()['base_price']
+
+    if num_seats_bought >= flight_number * 0.6 and num_seats_bought < flight_capacity:
+        price_of_ticket = base_price * 1.25
+    elif num_seats_bought < flight_number * 0.6 and num_seats_bought < flight_capacity:
+        price_of_ticket = base_price
+    else:
+        error = "Flight is full, choose another flight"
+        cursor.close()
+        return render_template("customer.html", error=error)
+
+    # flight has seats open, need to make new ticket
+    query = "SELECT * FROM purchase where airline_name = \""+ airline_name +"\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\" and customer_email IS NOT NULL"
+    cursor.execute(query)
+    existing_tickets = cursor.fetchall()
+
+    if existing_tickets:
+        ticket_id = existing_tickets[0]['ticket_id']
+        update = "UPDATE purchase SET customer_email = \""+ cust_email +"\", sold_price = \""+ price_of_ticket +"\" where ticket_id = \""+ ticket_id +"\""
+        cursor.execute(query)
+        conn.commit()
+    else:       # need to create new ticket
+        ticket_id = num_tickets + 1
+        query = "INSERT INTO ticket VALUES(\""+ ticket_id +"\", \""+ airline_name +"\", \""+ flight_number +"\")"
+        if not cursor.execute(query):
+            error="Error occured. Please attempt purchase again"
+            cursor.close()
+            return render_template("customer.html", error=error)
+        conn.commit()
 
     currTime = datetime.datetime.now()
     date = currTime.strftime("\'%Y-%m-%d\'")
     time = currTime.strftime("\'%H:%M:00\'")
 
-    query = f'''SELECT ticket_id FROM ticket ORDER BY ticket_id DESC LIMIT 1'''
-    cursor.execute(query)
-    ticket_id = cursor.fetchone()['ticket_id'] # get the last ticket_id, add 1
-    ticket_id += 1
-    if ticket_id > 99999999: # all possible ticket_id already used, need to wrap back to 0
-        ticket_id = 0
-    if request.method == "POST":
-        query = f'''insert into purchases values ({ticket_id}, \'{session['Username']}\', null, {base_price}, {date}, {time}, \'{request.form['cardType']}\', {request.form['cardNumber']}, \'{request.form['cardName']}\', \'{request.form['expDate']}\')'''
-        cursor.execute(query)
-        query = f'''insert into ticket values ({ticket_id}, \'{airline_name}\', {flight_num})'''
-        cursor.execute(query)
-        error = "Succesful Purchase!"
+    query = "INSERT INTO purchase VALUES(\""+ cust_email +"\", \""+ airline_name +"\", \""+ price_of_ticket +"\", \""+ date +"\", \""+ time +"\", \""+ card_type +"\", \""+ card_number +"\", \""+ card_name +"\", \""+ exp_date +"\")"
+    if not cursor.execute(query):
+        error="Purchase unsuccessful. Try again."
+        cursor.close()
+        return render_template("customer.html", error=error)
+    conn.commit()
     cursor.close()
-    return render_template("customer.html", name=airline_name, number=flight_num, price=base_price, error=error, date=depDate, time=depTime)
+
+    return render_template("customer.html", error="Purchase successful!")
 
 
 @app.route('/logout', methods=["GET"])
