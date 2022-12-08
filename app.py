@@ -646,7 +646,7 @@ def customerPurchase():
     if exp_date <= today:
         error= "Card has expired. Try a valid card"
         cursor.close()
-        render_template("customer.html", error=error)
+        return render_template("customer.html", error=error)
 
     query = "SELECT num_of_seats FROM flight natural join airplane where airline_name = \"" + airline_name + \
             "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + \

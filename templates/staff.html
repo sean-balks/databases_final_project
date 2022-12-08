@@ -43,13 +43,13 @@
                 <input type="text" class="info_input" name="reportDate2" id="reportDate2" placeholder="Report Date 2">
         </div>
 
-        <button class="search_button" formaction="/staffflights" onclick="staffFlights()" id="search">Search</button>
+        <button class="search_button" formaction="/staffflights" onclick="staffFlights()" id="staffFlights">Search</button>
         <button class="search_button" formaction="/addflight" onclick="addFlight()" id="create_flight">Create New Flight</button>
         <button class="search_button" formaction="/changestatus" onclick="changeStatus()" id="change_status">Change Flight Status</button>
         <button class="search_button" formaction="/addairplane" onclick="addAirplane()" id="add_airplane">Add Airplane</button>
         <button class="search_button" formaction="/addairport" onclick="addAirport()" id="add_airport">Add Airport</button>
         <button class="search_button" formaction="/ratings" onclick="ratings()" id="view_ratings">View Flight Ratings</button>
-        <button class="search_button" formaction="/staffviewflights" onclick="viewFlights()" id="search">View My Flights</button>
+        <button class="search_button" formaction="/staffviewflights" onclick="viewFlights()" id="staffviewflights">View My Flights</button>
 
         </form>
 
@@ -73,12 +73,9 @@
         <button class="search_button" formaction="/frequentfliers" onclick="frequentFliers()" id="view_frequent_customers">View Frequent Customers</button>
         <div><button class="search_button" formaction="/reportsDefault" onclick="reportsDefault()" id="view_default_reports">View Default Reports</button></div>
         <div><button class="search_button" formaction="/reports" onclick="reports()" id="view_reports">View Reports</button></div>
-
         <div><button class="search_button" formaction="/revenue" onclick="revenue()" id="view_revenue">View Earned Revenue</button></div>
-        <a href="/logout"><button class="search_button" id="logout" onclick="logout()">Logout</button></a>
-
         </form>
-
+        <a href="/logout"><button class="search_button" id="logout" onclick="logout()">Logout</button></a>
     </div>
 
 </html>
