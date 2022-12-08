@@ -276,107 +276,6 @@ def changeInMonths(date, rotation):
     return date.replace(day=day, month=mon, year=year)
 
 
-@app.route("/spending", methods=["POST", "GET"])
-@require_cust_login
-def customerSpending():
-    today = datetime.datetime.now()
-    # default shows spendings from the past year
-    oneYearAgo = today - datetime.timedelta(days = 365)
-    date2 = today.strftime("%Y-%m-%d")
-    date1 = oneYearAgo.strftime("%Y-%m-%d")
-
-
-    cursor = conn.cursor()
-    query = f'''SELECT sold_price from purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\''''
-    cursor.execute(query)
-
-    totalSpent = 0
-    for price in cursor.fetchall():
-        totalSpent += price['sold_price']
-
-    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-
-    # getting purchase records by each month for the past 6 months
-    monthlyExpend = []
-    currMonth = int(today.strftime("%m"))
-    currYr = int(today.strftime("%Y"))
-    if currMonth >= 6:  # we can easily get the previous 6 months
-        bar_labels = months[currMonth - 6 : currMonth]
-        for mon in range(1, currMonth + 1):
-            query = f'''SELECT sold_price from purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr}'''
-            cursor.execute(query)
-            monthlySpending = 0
-            # calculate the amount spent for the current month
-            for price in cursor.fetchall():
-                monthlySpending += price['sold_price']
-            monthlyExpend.append(monthlySpending)
-    else: # have to deal with wrapping months before january
-        extraMonths = months[12 - (6 - currMonth):] # get end of last year
-        bar_labels = extraMonths + months[:currMonth]
-        extra = 6 - currMonth
-        for mon in range((13 - extra), 13): # last year's months
-            query = f'''select sold_price from purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr - 1}'''
-            cursor.execute(query)
-            monthlySpending = 0
-            for price in cursor.fetchall():
-                monthlySpending += price['sold_price']
-            monthlyExpend.append(monthlySpending)
-        for mon in range(1, currMonth + 1): # this year's months
-            query = f'''select sold_price from purchases where customer_email = \'{session['Username']}\' and month(purchase_date) = {mon} and year(purchase_date) = {currYr}'''
-            cursor.execute(query)
-            monthlySpending = 0
-            for price in cursor.fetchall():
-                monthlySpending += price['sold_price']
-            monthlyExpend.append(monthlySpending)
-
-    # The user requested specific months to show
-    if request.method == "POST":  # recalculate total spent for the specified range
-        monthlyExpend = []
-        date1 = request.form['date1']
-        date2 = request.form['date2']
-        datetime1 = datetime.datetime.strptime(date1, "%Y-%m-%d")
-        datetime2 = datetime.datetime.strptime(date2, "%Y-%m-%d")
-
-
-        months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-        query = f''' SELECT sold_price from purchases where customer_email = \'{session['Username']}\' and purchase_date > \'{date1}\' and purchase_date < \'{date2}\''''
-        cursor.execute(query)
-        totalSpent = 0
-        for price in cursor.fetchall():
-            totalSpent += price['sold_price']
-        # Get monthly spendings for specified range of dates
-        monthDiff = 0
-        if datetime1.year == datetime2.year:
-            bar_labels = months[datetime1.month - 1:datetime2.month]
-            monthDiff = datetime2.month - datetime1.month
-        else:  #range spans over multiple years
-            monthDiff = (12 - datetime1.month) + datetime2.month
-            beginningMonths = months[datetime1.month - 1:]
-            endMonths = months[:datetime2.month]
-            yearDiff = (int(datetime2.strftime("%Y")) - int(datetime1.strftime("%Y")))
-            for mon in range(1, yearDiff):
-                monthDiff += 12
-                beginningMonths += months
-            bar_labels = beginningMonths + endMonths
-
-
-
-        loop_date = datetime2
-        for mon in range(monthDiff + 1):
-            monthNum = loop_date.strftime("%m")
-            yearNum = loop_date.strftime("%Y")
-            query = f'''SELECT sold_price from purchases where customer_email = \'{session['Username']}\' AND month(purchase_date) = {monthNum} AND year(purchase_date) = {yearNum} AND purchase_date <= \'{datetime2.strftime("%Y-%m-%d")}\' and purchase_date >= \'{datetime1.strftime("%Y-%m-%d")}\''''
-            cursor.execute(query)
-            monthlySpending = 0
-            for item in cursor.fetchall():
-                monthlySpending += item.get("sold_price")
-            monthlyExpend.insert(0, monthlySpending)
-            loop_date = changeInMonths(loop_date, -1)  #account for wrapping months
-    cursor.close()
-    return render_template("customer.html", total=totalSpent, max = 25000, labels=bar_labels, values=monthlyExpend, old=date1, today=date2)
-
-
-
 @app.route("/staffflights", methods=["GET"])
 @require_staff_login
 def staffFlights():
@@ -451,9 +350,7 @@ def addFlight():
         else:
             status = "Delayed"
         cursor = conn.cursor()
-        query = f'''insert into flight values (\'{session['airline_name']}\', \'{status}\', \'{request.form['flight_num']}\', \'{request.form['source_city']}\', \'{request.form['departure_date']}\', 
-                \'{request.form['departure_time']}\', \'{request.form['dest_city']}\', \'{request.form['return_date']}\', \'{request.form['return_time']}\', \
-                \'{request.form['base_price']}\', \'{request.form['airplane_ID']}'''
+        query = f'''insert into flight values (\'{session['airline_name']}\', \'{status}\', \'{request.form['flight_num']}\', \'{request.form['source_city']}\', \'{request.form['departure_date']}\', \'{request.form['departure_time']}\', \'{request.form['dest_city']}\', \'{request.form['return_date']}\', \'{request.form['return_time']}\', \'{request.form['base_price']}\', \'{request.form['airplane_ID']}'''
         cursor.execute(query)
         cursor.close()
     return render_template("staff.html", error=error)
@@ -624,7 +521,9 @@ def specify_spending():
         num_months = (endDate.year - startDate.year) * 12 + (endDate.month - startDate.month)
 
         # find the total money spent in range of specified dates
-        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\") AND DATE(purchase_date) <= DATE(\"" + str(endDate) + "\")"
+        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + \
+                "\" AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\") AND DATE(purchase_date) <= DATE(\"" \
+                + str(endDate) + "\")"
         if cursor.execute(query):
             total = cursor.fetchone()['total_spent']
         else:
@@ -633,7 +532,9 @@ def specify_spending():
         # money spent in range by month
         dict = {}
         for mon in range(num_months):
-            query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) <= DATE_ADD(DATE(\"" + str(startDate) + "\"), INTERVAL 1 MONTH) AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\")"
+            query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] \
+                    + "\" AND DATE(purchase_date) <= DATE_ADD(DATE(\"" + str(startDate) + \
+                    "\"), INTERVAL 1 MONTH) AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\")"
             cursor.execute(query)
             results = cursor.fetchone()['total_spent']
             if not results:
@@ -655,7 +556,8 @@ def specify_spending():
 def trackSpending():
     cursor = conn.cursor()
     # total money spent in the past year
-    query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 YEAR)"
+    query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + \
+            "\" AND DATE(purchase_date) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 YEAR)"
     if cursor.execute(query):
         total = cursor.fetchone()['total_spent']
     else:
@@ -667,7 +569,9 @@ def trackSpending():
     month_total = 0
     today = datetime.date(datetime.now())
     for mon in range(6):
-        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + "\" AND DATE(purchase_date) >= DATE_ADD(DATE(\"" + str(today) + "\"), INTERVAL -1 MONTH) AND DATE(purchase_date) <= DATE(\"" + str(today) + "\")"
+        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + \
+                "\" AND DATE(purchase_date) >= DATE_ADD(DATE(\"" + str(today) + \
+                "\"), INTERVAL -1 MONTH) AND DATE(purchase_date) <= DATE(\"" + str(today) + "\")"
         cursor.execute(query)
         results = cursor.fetchone()['total_spent']
         if results is not None:
@@ -735,7 +639,9 @@ def customerPurchase():
         cursor.close()
         render_template("customer.html", error=error)
 
-    query = "SELECT num_of_seats FROM flight natural join airplane where airline_name = \"" + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\""
+    query = "SELECT num_of_seats FROM flight natural join airplane where airline_name = \"" + airline_name + \
+            "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + \
+            "\" and departure_time = \"" + departure_time + "\""
     cursor.execute(query)
     flight_capacity = cursor.fetchone()["num_of_seats"]
 
@@ -743,11 +649,15 @@ def customerPurchase():
     cursor.execute(query)
     num_tickets = cursor.fetchone()['num_tickets']
 
-    query = "SELECT COUNT(ticket_id) as num_seats_bought FROM ticket natural join flight natural joing purchase where airline_name = \"" + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\" and customer_email IS NOT NULL"
+    query = "SELECT COUNT(ticket_id) as num_seats_bought FROM ticket natural join flight natural joing purchase where airline_name = \"" \
+            + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date \
+            + "\" and departure_time = \"" + departure_time + "\" and customer_email IS NOT NULL"
     cursor.execute(query)
     num_seats_bought = cursor.fetchone()['num_seats_bought']
 
-    query = "SELECT base_price FROM flight natural join airplane where airline_name = \"" + airline_name + "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\""
+    query = "SELECT base_price FROM flight natural join airplane where airline_name = \"" + airline_name +\
+            "\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + \
+            "\" and departure_time = \"" + departure_time + "\""
     cursor.execute(query)
     base_price = cursor.fetchone()['base_price']
 
@@ -761,14 +671,17 @@ def customerPurchase():
         return render_template("customer.html", error=error)
 
     # flight has seats open, need to make new ticket
-    query = "SELECT * FROM purchase where airline_name = \""+ airline_name +"\" and flight_number = \"" + flight_number + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + "\" and customer_email IS NOT NULL"
+    query = "SELECT * FROM purchase where airline_name = \""+ airline_name +"\" and flight_number = \"" + flight_number \
+            + "\" and departure_date = \"" + departure_date + "\" and departure_time = \"" + departure_time + \
+            "\" and customer_email IS NULL"
     cursor.execute(query)
     existing_tickets = cursor.fetchall()
 
     if existing_tickets:
         ticket_id = existing_tickets[0]['ticket_id']
-        update = "UPDATE purchase SET customer_email = \""+ cust_email +"\", sold_price = \""+ price_of_ticket +"\" where ticket_id = \""+ ticket_id +"\""
-        cursor.execute(query)
+        update = "UPDATE purchase SET customer_email = \""+ cust_email +"\", sold_price = \""+ price_of_ticket +\
+                 "\" where ticket_id = \""+ ticket_id +"\""
+        cursor.execute(update)
         conn.commit()
     else:       # need to create new ticket
         ticket_id = num_tickets + 1
@@ -783,7 +696,9 @@ def customerPurchase():
     date = currTime.strftime("\'%Y-%m-%d\'")
     time = currTime.strftime("\'%H:%M:00\'")
 
-    query = "INSERT INTO purchase VALUES(\""+ cust_email +"\", \""+ airline_name +"\", \""+ price_of_ticket +"\", \""+ date +"\", \""+ time +"\", \""+ card_type +"\", \""+ card_number +"\", \""+ card_name +"\", \""+ exp_date +"\")"
+    query = "INSERT INTO purchase VALUES(\""+ cust_email +"\", \""+ airline_name +"\", \""+ price_of_ticket +"\", \""+ \
+            date +"\", \""+ time +"\", \""+ card_type +"\", \""+ card_number +"\", \""+ card_name \
+            +"\", \""+ exp_date +"\")"
     if not cursor.execute(query):
         error="Purchase unsuccessful. Try again."
         cursor.close()
