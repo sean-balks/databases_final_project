@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <nav>
+            <div>
+                <a href="/staff">Return To Home</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </nav>
+        <title>View Earned Revenue By Month and Year</title>
+    </head>
+    <body>
+        <h1>View Earned Revenue</h1>
+        <style>
+            table, th, td {
+              border:1px solid black;
+            }
+        </style>
+        <h3>Revenue Within Last Month</h3>
+        <table style="width:85%">
+            <tr>
+                <th>Total Revenue For Month</th>
+            </tr>
+                <tr>
+                <td>${{month_rev}}</td>
+                </tr>
+        </table>
+        <br>
+        <br>
+        <hr>
+        <br>
+        <h3>Revenue Within Last Year</h3>
+        <table style="width:85%">
+            <tr>
+                <th>Total Revenue For Year</th>
+            </tr>
+                <tr>
+                <td>${{year_rev}}</td>
+                </tr>
+        </table>
+        <hr>
+    </body>
+</html>

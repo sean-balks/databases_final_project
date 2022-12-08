@@ -403,7 +403,7 @@ def staffFlights():
     results = cursor.fetchall()
     for number in flightNums:
         curr_num = number.get("flight_number")
-        query = f'''SELECT customer.name from ricket NATURAL JOIN purchases NATURAL JOIN customer where ticket.flight_number = {curr_num}'''
+        query = f'''SELECT customer.name from ticket NATURAL JOIN purchases NATURAL JOIN customer where ticket.flight_number = {curr_num}'''
         cursor.execute(query)
         cust_names = cursor.fetchall()
         list_of_names = []
@@ -419,7 +419,7 @@ def staffFlights():
 @app.route("/addairport", methods=["GET", "POST"])
 @require_staff_login
 def addAirport():
-    error = None
+    error = "Airport added."
     if request.method == "POST":
         cursor = conn.cursor()
         query = f'''insert into airport values (\'{request.form['airport_name']}\', \'{request.form['source_city']}'''
@@ -431,7 +431,7 @@ def addAirport():
 @app.route("/addairplane", methods=["GET", "POST"])
 @require_staff_login
 def addAirplane():
-    error = None
+    error = "Airplan added."
     if request.method == "POST":
         cursor = conn.cursor()
         query = f'''insert into airplane values (\'{request.form['airplane_ID']}\', \'{request.form['num_of_seats']}\', \'{request.form['airline_name']}'''
@@ -443,7 +443,7 @@ def addAirplane():
 @app.route("/addflight", methods=["GET", "POST"])
 @require_staff_login
 def addFlight():
-    error = None
+    error = "Flight added."
     if request.method == "POST":
         status = request.form["new_status"]
         if status == "ontime":
@@ -531,48 +531,82 @@ def ratings():
     return render_template("staff.html", results=results)
 
 
+@app.route("/reportsDefault", methods=["POST", "GET"])
+@require_staff_login
+def reportsDefault():
+    cursor = conn.cursor()
+    airline_name = session["airline_name"]
+
+    today = datetime.datetime.now()
+
+
+    query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH)"
+
+    if not cursor.execute(query):
+        last_month = 0
+    else:
+        last_month = cursor.fetchone()['count_tix']
+
+    year_dict = {}
+    year_total = 0
+    for mon in range(12):
+        query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE_ADD(DATE(\""+str(today)+"\"), INTERVAL -1 MONTH) AND DATE(purchase_date) <= DATE(\""+str(today)+"\")"
+        if cursor.execute(query):
+            results = cursor.fetchone()['count_tix']
+        else:
+            results = 0
+        year_total += results
+        previous_day = today
+        today -= relativedelta(months=1)
+        interval = str(today) + ' - ' + str(previous_day)
+        year_dict[mon+1] = (interval, results)
+
+    mons = [mon for mon in range(12,0,-1)]
+    cursor.close()
+    return render_template("defaultReport.html", year_dict=year_dict, last_month=last_month, year_total=year_total, mons=mons)
+
+
 @app.route("/reports", methods=["POST", "GET"])
 @require_staff_login
 def reports():
-    values = []
-    chartTitle = "Number of Tickets Sold"
-    total = 0
-    months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-    cursor = conn.cursor()
-    if request.method == "POST": #user entered a specific range of dates
-        values = []
-        beg_date = request.form['beg_date']
-        end_date = request.form['end_date']
-        datetime1 = datetime.datetime.strptime(beg_date, "%Y-%m-%d")
-        datetime2 = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-        month_diff = 0
-        if datetime1.year == datetime2.year:
-            bar_labels = months[datetime1.month - 1:datetime2.month]
-            month_diff = datetime2.month - datetime1.month
+    if request.method == "POST":
+        cursor = conn.cursor()
+        airline_name = session["airline_name"]
+
+        beg_date = request.form['reportDate1']
+        end_date = request.form['reportDate2']
+
+        beg = datetime.date(datetime.strptime(beg_date, "%Y-%m-%d"))
+        end = datetime.date(datetime.strptime(end_date, "%Y-%m-%d"))
+
+        num_of_months = (end.year - beg.year) * 12 + (end.month - beg.month)
+
+
+        query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE(\""+ str(beg) +"\") AND DATE(purchase_date) <= DATE(\""+ str(end) +"\")"
+
+        if not cursor.execute(query):
+            total_tix = 0
         else:
-            month_diff = (12 - datetime1.month) + datetime2.month
-            labels1 = months[datetime1.month - 1:]
-            labels2 = months[:datetime2.month]
-            year_diff = (int(datetime2.strftime("%Y")) - int(datetime1.strftime("%Y")))
-            for ind in range(1, year_diff):
-                month_diff += 12
-                labels1 += months
-            bar_labels = labels1 + labels2
-        loop_date = datetime2
-        for ind in range(month_diff + 1):
-            month_num = loop_date.strftime("%m")
-            year_num = loop_date.strftime("%Y")
-            loop_date = changeInMonths(loop_date, -1)
-            query = f'''SELECT count(ticket_id) FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{session['airline_name']}\' 
-            and extract(month from purchases.purchase_date) = {month_num} 
-            AND extract(year from  purchases.purchase_date) = {year_num}
-            and purchase_date <= \'{datetime2}\' and purchase_date >= \'{datetime1}\''''
-            cursor.execute(query)
-            num_tickets_sold = cursor.fetchone()['count(ticket_id)']
-            values.insert(0, num_tickets_sold)
-        total = sum(values)
-    cursor.close()
-    return render_template("staff.html", old=beg_date, today=end_date, total=total, values=values, title=chartTitle, labels=bar_labels, max=100)
+            total_tix = cursor.fetchone()['count_tix']
+
+        year_dict = {}
+        for mon in range(12):
+            query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) <= DATE_ADD(DATE(\""+str(beg)+"\"), INTERVAL 1 MONTH) AND DATE_ADD(DATE(\""+str(beg)+"\"), INTERVAL 1 MONTH) >= DATE(purchase_date)"
+            if cursor.execute(query):
+                results = cursor.fetchone()['count_tix']
+            else:
+                results = 0
+
+            previous_day = beg
+            beg += relativedelta(months=1)
+            interval = str(previous_day) + ' - ' + str(beg)
+            year_dict[mon+1] = (interval, results)
+
+        mons = [mon for mon in range(1,num_of_months+1)]
+        cursor.close()
+        return render_template("report.html", year_dict=year_dict, results=results, mons=mons)
+    return render_template("staff.html")
+
 
 
 # track monthly wise spending within specified range of dates
@@ -652,35 +686,30 @@ def trackSpending():
 @app.route("/revenue")
 @require_staff_login
 def revenue():
-    graph_title = "View Yearly and Monthly Revenue"
-    month_values = []
-    year_values = []
-
     airline_name = session['airline_name']
     cursor = conn.cursor()
 
     today = datetime.datetime.now()
+
     one_month_ago = today - datetime.timedelta(days = 30)
     one_year_ago = today - datetime.timedelta(days = 365)
     # revenue from last month
-    query = f'''SELECT sum(sold_price) FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{airline_name}\' and purchases.purchase_date >= \'{one_month_ago.strftime("%Y-%m-%d")}\''''
-    cursor.execute(query)
-    month_rev = cursor.fetchone()['sum(sold_price)']
-    if month_rev:
-        month_values.append(int(month_rev))
-    else:
-        month_values.append(0)
+    query = f'''SELECT sum(sold_price) as rev FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{airline_name}\' and purchases.purchase_date >= \'{one_month_ago.strftime("%Y-%m-%d")}\''''
+    if cursor.execute(query):
+        month_rev = cursor.fetchone()['rev']
 
     # revenue from last year
-    query = f'''SELECT sum(sold_price) FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{airline_name}\' AND purchases.purchase_date >= \'{one_year_ago.strftime("%Y-%m-%d")}\''''
-    cursor.execute(query)
-    year_rev = cursor.fetchone()['sum(sold_price)']
-    if (year_rev):
-        year_values.append(int(year_rev))
-    else:
-        year_values.append(0)
+    query = f'''SELECT sum(sold_price) as rev FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{airline_name}\' AND purchases.purchase_date >= \'{one_year_ago.strftime("%Y-%m-%d")}\''''
+    if cursor.execute(query):
+        year_rev = cursor.fetchone()['rev']
+
+    if not month_rev:
+        month_rev = 0
+    if not year_rev:
+        year_rev = 0
+
     cursor.close()
-    return render_template("staff.html", title=graph_title, max=25000, m_val = month_values, y_val = year_values)
+    return render_template("revenue.html", month_rev=month_rev, year_rev=year_rev)
 
 
 @app.route("/customerPurchase", methods=["POST", "GET"])

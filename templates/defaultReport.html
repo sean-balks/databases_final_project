@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <nav>
+            <div>
+                <a href="/staff">Return To Staff Page</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </nav>
+        <title>Reports Results</title>
+    </head>
+    <body>
+        <h1>Total Number of Tickets Purchased in Last Year and Last Month</h1>
+        <style>
+            table, th, td {
+              border:1px solid black;
+            }
+        </style>
+        <h3>Last Month</h3>
+        <table style="width:85%">
+            <tr>
+                <th>Number of Tickets</th>
+            </tr>
+            <tr>
+                <td>{{last_month}}</td>
+            </tr>
+        </table>
+        <br>
+        <hr>
+        <br>
+        <h3>Last Year</h3>
+        <h3>Total Tickets: {{year_total}}</h3>
+        <table style="width:85%">
+            <tr>
+                <th>Range of Dates</th>
+                <th>Number of Tickets</th>
+            </tr>
+            {% for mon in mons %}
+                <tr>
+                <td>{{year_dict[mon][0]}}</td>
+                <td>{{year_dict[mon][1]}}</td>
+                </tr>
+            {% endfor %}
+        </table>
+        <br>
+    </body>
+    <br>
+    <hr>
+</html>

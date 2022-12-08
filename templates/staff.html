@@ -27,28 +27,41 @@
                 <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
                 <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
                 <input type="text" class="info_input" name="flight_id" id="flight_id" placeholder="Flight ID">
+                <input type="number" class="info_input" name="base_price" id="base_price" placeholder="Base Flight Price">
             </form>
         </div>
 
         <div>
-            <input type="text" class="info_input" name="departure_date" id="departure_date" placeholder="Departure Date">
-            <input type="text" class="info_input" name="departure_time" id="departure_time" placeholder="Departure Time">
-            <input type="text" class="info_input" name="return_date" id="return_date" placeholder="Return Date">
-            <input type="text" class="info_input" name="return_time" id="return_time" placeholder="Return Time">
-            <input type="text" class="info_input" name="new_status" id="new_status" placeholder="New Status">
-            <input type="text" class="info_input" name="comment" id="comment" placeholder="Comment">
-            <input type="number" class="info_input" name="num_seats" id="num_seats" placeholder="Num Seats">
+            <form method="post" action="">
+                <input type="text" class="info_input" name="departure_date" id="departure_date" placeholder="Departure Date">
+                <input type="text" class="info_input" name="departure_time" id="departure_time" placeholder="Departure Time">
+                <input type="text" class="info_input" name="return_date" id="return_date" placeholder="Return Date">
+                <input type="text" class="info_input" name="return_time" id="return_time" placeholder="Return Time">
+                <input type="text" class="info_input" name="new_status" id="new_status" placeholder="New Status">
+                <input type="text" class="info_input" name="comment" id="comment" placeholder="Comment">
+                <input type="number" class="info_input" name="num_seats" id="num_seats" placeholder="Num Seats">
+                <input type="text" class="info_input" name="airplane_ID" id="airplane_ID" placeholder="Airplane ID">
+                <input type="text" class="info_input" name="reportDate1" id="reportDate1" placeholder="Report Date 1">
+                <input type="text" class="info_input" name="reportDate2" id="reportDate2" placeholder="Report Date 2">
+            </form>
         </div>
 
-        <button class="search_button" id="search">Search</button>
-        <button class="search_button" id="create_flight">Create New Flight</button>
-        <button class="search_button" id="change_status">Change Flight Status</button>
-        <button class="search_button" id="add_airplane">Add Airplane</button>
-        <button class="search_button" id="add_airport">Add Airport</button>
-        <button class="search_button" id="view_ratings">View Flight Ratings</button>
+        <button class="search_button" formaction="/staffflights" onclick="staffFlights()" id="search">Search</button>
+        <button class="search_button" formaction="/addflight" onclick="addFlight()" id="create_flight">Create New Flight</button>
+        <button class="search_button" formaction="/changestatus" onclick="changeStatus()" id="change_status">Change Flight Status</button>
+        <button class="search_button" formaction="/addairplane" onclick="addAirplane()" id="add_airplane">Add Airplane</button>
+        <button class="search_button" formaction="/addairport" onclick="addAirport()" id="add_airport">Add Airport</button>
+        <button class="search_button" formaction="/ratings" onclick="ratings()" id="view_ratings">View Flight Ratings</button>
 
         {% for result in results %}
             <p> {{result}} </p> 
+        {% endfor %}
+
+        <br>
+        <br>
+
+        {% for customer in customers %}
+            <p> {{customer}} </p>
         {% endfor %}
 
 
@@ -56,9 +69,11 @@
 
     <div class="box">
         <p class="sign_in">Actions</p>
-        <button class="search_button" id="view_frequent_customers">View Frequent Customers</button>
-        <div><button class="search_button" id="view_reports">View Reports</button></div>
-        <div><button class="search_button" id="view_revenue">View Earned Revenue</button></div>
+        <button class="search_button" formaction="/frequentfliers" onclick="frequentFliers()" id="view_frequent_customers">View Frequent Customers</button>
+        <div><button class="search_button" formaction="/reportsDefault" onclick="reportsDefault()" id="view_default_reports">View Default Reports</button></div>
+        <div><button class="search_button" formaction="/reports" onclick="reports()" id="view_reports">View Reports</button></div>
+
+        <div><button class="search_button" formaction="/revenue" onclick="revenue()" id="view_revenue">View Earned Revenue</button></div>
         <a href="/logout"><button class="search_button" id="logout" onclick="logout()">Logout</button></a>
 
     </div>
