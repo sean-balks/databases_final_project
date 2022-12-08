@@ -3,7 +3,7 @@ import pymysql
 import hashlib
 from functools import wraps
 import datetime
-from datetime import datetime
+from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 
 app = Flask(__name__)
@@ -283,7 +283,7 @@ def staffFlights():
     query = "select airline_name from staff where username = \"" + session['Username'] + "\""
     cursor.execute(query)
     airlineName = cursor.fetchone().get("airline_name")
-    query = "select * from flights where airline_name = \"" + airlineName + "\""
+    query = "select * from flight where airline_name = \"" + airlineName + "\""
     cursor.execute(query)
 
     customer_list = []
@@ -318,11 +318,12 @@ def staffFlights():
 @app.route("/addairport", methods=["GET", "POST"])
 @require_staff_login
 def addAirport():
-    error = "Airport added."
+    error = None
     if request.method == "POST":
         cursor = conn.cursor()
-        query = f'''insert into airport values (\'{request.form['airport_name']}\', \'{request.form['source_city']}'''
+        query = f'''insert into airport values (\'{request.form['airport_name']}\', \'{request.form['airport_city']}\')'''
         cursor.execute(query)
+        error = "Airport added successfully!"
         cursor.close()
     return render_template("staff.html", error=error)
 
@@ -330,11 +331,12 @@ def addAirport():
 @app.route("/addairplane", methods=["GET", "POST"])
 @require_staff_login
 def addAirplane():
-    error = "Airplan added."
+    error = None
     if request.method == "POST":
         cursor = conn.cursor()
-        query = f'''insert into airplane values (\'{request.form['airplane_ID']}\', \'{request.form['num_of_seats']}\', \'{request.form['airline_name']}'''
+        query = f'''insert into airplane values (\'{request.form['airplane_ID']}\', \'{request.form['num_seats']}\', \'{request.form['airline_name']}\')'''
         cursor.execute(query)
+        error = "Airplane added successfully!"
         cursor.close()
     return render_template("staff.html", error=error)
 
@@ -353,13 +355,9 @@ def staffviewflights():
 def addFlight():
     error = "Flight added."
     if request.method == "POST":
-        status = request.form["new_status"]
-        if status == "ontime":
-            status = "On Time"
-        else:
-            status = "Delayed"
         cursor = conn.cursor()
-        query = f'''insert into flight values (\'{session['airline_name']}\', \'{status}\', \'{request.form['flight_num']}\', \'{request.form['source_city']}\', \'{request.form['departure_date']}\', \'{request.form['departure_time']}\', \'{request.form['dest_city']}\', \'{request.form['return_date']}\', \'{request.form['return_time']}\', \'{request.form['base_price']}\', \'{request.form['airplane_ID']}'''
+        query = f'''insert into flight values (\'{session['airline_name']}\', \'{request.form['new_status']}\', \'{request.form['flight_num']}\', \'{request.form['source_city']}\', \'{request.form['departure_date']}\', \'{request.form['departure_time']}\', \'{request.form['dest_city']}\', \'{request.form['return_date']}\', \'{request.form['return_time']}\', \'{request.form['base_price']}\', \'{request.form['airplane_ID']}\')'''
+        print(query)
         cursor.execute(query)
         cursor.close()
     return render_template("staff.html", error=error)
@@ -371,13 +369,9 @@ def changeStatus():
     error = None
     if request.method == "POST":
         cursor = conn.cursor()
-        status = request.form["new_status"]
-        if status == "ontime":
-            status = "On Time"
-        else:
-            status = "Delayed"
-        query = f'''update flight set status = \'{status}\' where flight_number = \'{request.form['flight_num']}\' and departure_date = \'{request.form['departure_date']}\' and departure_time = \'{request.form['departure_time']}\''''
+        query = f'''update flight set status = \'{request.form['new_status']}\' where flight_number = \'{request.form['flight_num']}\' and departure_date = \'{request.form['departure_date']}\' and departure_time = \'{request.form['departure_time']}\''''
         cursor.execute(query)
+        error = "Flight status updated successfully!"
         cursor.close()
     return render_template("staff.html", error=error)
 
@@ -391,7 +385,7 @@ def frequentFliers():
     results = []
     flights = []
 
-    date = datetime.now() - datetime.time(days=365)
+    date = datetime.now() - datetime.timedelta(days=365)
     query = f'''SELECT customer_email, count(ticket_id) FROM purchases NATURAL JOIN ticket WHERE airline_name = \'{session['airline_name']}\' AND purchase_date >= \'{date.strftime("%Y-%m-%d")}\' group by customer_email order by count(ticket_id) desc limit 5'''
     cursor.execute(query)
     # populate dictionary with customer email as key and number of tickets purchased as value
@@ -635,7 +629,6 @@ def customerPurchase():
     airline_name = request.form['airline_name']
     flight_number = request.form['flight_num']
 
-
     card_type = request.form['card_type']
     card_number = request.form['card_number']
     card_name = request.form['card_name']
@@ -650,13 +643,13 @@ def customerPurchase():
     query = "SELECT num_of_seats FROM flight natural join airplane where airline_name = \"" + airline_name + \
             "\" and flight_number = \"" + flight_number + "\""
     cursor.execute(query)
-    flight_capacity = cursor.fetchone()["num_of_seats"]
+    flight_capacity = cursor.fetchone()
 
     query = "SELECT COUNT(ticket_id) AS num_tickets FROM ticket"
     cursor.execute(query)
     num_tickets = cursor.fetchone()['num_tickets']
 
-    query = "SELECT COUNT(ticket_id) as num_seats_bought FROM ticket natural join flight natural joing purchase where airline_name = \"" \
+    query = "SELECT COUNT(ticket_id) as num_seats_bought FROM ticket natural join flight natural join purchases where airline_name = \"" \
             + airline_name + "\" and flight_number = \"" + flight_number + "\" and customer_email IS NOT NULL"
     cursor.execute(query)
     num_seats_bought = cursor.fetchone()['num_seats_bought']
@@ -664,11 +657,11 @@ def customerPurchase():
     query = "SELECT base_price FROM flight natural join airplane where airline_name = \"" + airline_name +\
             "\" and flight_number = \"" + flight_number + "\""
     cursor.execute(query)
-    base_price = cursor.fetchone()['base_price']
+    base_price = cursor.fetchone()
 
-    if num_seats_bought >= flight_number * 0.6 and num_seats_bought < flight_capacity:
+    if num_seats_bought >= flight_capacity * 0.6 and num_seats_bought < flight_capacity:
         price_of_ticket = base_price * 1.25
-    elif num_seats_bought < flight_number * 0.6 and num_seats_bought < flight_capacity:
+    elif num_seats_bought < flight_capacity * 0.6 and num_seats_bought < flight_capacity:
         price_of_ticket = base_price
     else:
         error = "Flight is full, choose another flight"
@@ -676,7 +669,6 @@ def customerPurchase():
         return render_template("customer.html", error=error)
 
     # flight has seats open, need to make new ticket
-
     ticket_id = num_tickets + 1
     query = "INSERT INTO ticket VALUES(\""+ ticket_id +"\", \""+ airline_name +"\", \""+ flight_number +"\")"
     if not cursor.execute(query):
@@ -685,11 +677,11 @@ def customerPurchase():
         return render_template("customer.html", error=error)
     conn.commit()
 
-    currTime = datetime.datetime.now()
+    currTime = datetime.now().strftime("%H:%M:%S")
     date = currTime.strftime("\'%Y-%m-%d\'")
     time = currTime.strftime("\'%H:%M:00\'")
 
-    query = "INSERT INTO purchase VALUES(\""+ cust_email +"\", \""+ airline_name +"\", \""+ price_of_ticket +"\", \""+ \
+    query = "INSERT INTO purchase VALUES(\"" + ticket_id + "\", \""+ cust_email +"\", \""+ airline_name +"\", \""+ price_of_ticket +"\", \""+ \
             date +"\", \""+ time +"\", \""+ card_type +"\", \""+ card_number +"\", \""+ card_name \
             +"\", \""+ exp_date +"\")"
     if not cursor.execute(query):
