@@ -3,7 +3,7 @@ import pymysql
 import hashlib
 from functools import wraps
 import datetime
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 
 app = Flask(__name__)
@@ -180,8 +180,10 @@ def cancelTrip():
     ticketID = request.form["ticket_id"]
 
     # delete the ticket from the purchase table
-    deleteQuery = "DELETE FROM purchase WHERE email = \"" + session['Username'] + "\" AND ticket_id = \"" + ticketID + "\""
-    if not cursor.execute(deleteQuery):
+    # delete the ticket from the ticket table so the ticketID can be available again since they are calculated on call
+    deleteQuery = "DELETE FROM purchases WHERE customer_email = \"" + session['Username'] + "\" AND ticket_id = " + ticketID
+    deleteTicket = "DELETE FROM ticket WHERE ticket_id = " + ticketID
+    if not (cursor.execute(deleteQuery) and cursor.execute(deleteTicket)):
         error="Unseccessful cancellation. Please try again"
         return render_template("customer.html", error=error)
     conn.commit()
@@ -340,15 +342,32 @@ def addAirplane():
         cursor.close()
     return render_template("staff.html", error=error)
 
-# NOT FINISHED YET - Query broken
 @app.route("/staffviewflights", methods=["POST"])
 @require_staff_login
 def staffviewflights():
     cursor = conn.cursor()
-    query = "select * from flights where airline = \"" + session['airline_name'] + "\" and departure_date > CURRENT_DATE and departure_date < date_add(now(), interval 30 day)"
+    query = "select * from flight where airline_name = \"" + session['airline_name'] + "\" and departure_date > CURRENT_DATE and departure_date < date_add(now(), interval 30 day)"
     cursor.execute(query)
     results = cursor.fetchall()
     return render_template("staff.html", results=results)
+
+@app.route("/viewairplanes", methods=["POST"])
+@require_staff_login
+def viewairplanes():
+    cursor = conn.cursor()
+    query = "select * from airplane where airline_name = \"" + session['airline_name'] + "\""
+    cursor.execute(query)
+    results = cursor.fetchall()
+    return render_template("staff.html", results=results)
+
+@app.route("/see_cust_flights", methods=["GET", "POST"])
+@require_staff_login
+def see_cust_flights():
+    cursor = conn.cursor()
+    query = "select * from purchases where customer_email = \"" + request.form['cust_email_staff'] + "\" and airline_name = \"" + session['airline_name'] + "\""
+    cursor.execute(query)
+    results = cursor.fetchall()
+    return render_template("staff.html", results = results)
 
 @app.route("/addflight", methods=["GET", "POST"])
 @require_staff_login
@@ -385,7 +404,7 @@ def frequentFliers():
     results = []
     flights = []
 
-    date = datetime.now() - datetime.timedelta(days=365)
+    date = datetime.now() - timedelta(days=365)
     query = f'''SELECT customer_email, count(ticket_id) FROM purchases NATURAL JOIN ticket WHERE airline_name = \'{session['airline_name']}\' AND purchase_date >= \'{date.strftime("%Y-%m-%d")}\' group by customer_email order by count(ticket_id) desc limit 5'''
     cursor.execute(query)
     # populate dictionary with customer email as key and number of tickets purchased as value
@@ -437,10 +456,9 @@ def reportsDefault():
     cursor = conn.cursor()
     airline_name = session["airline_name"]
 
-    today = datetime.datetime.now()
+    today = datetime.now()
 
-
-    query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH)"
+    query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchases natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 MONTH)"
 
     if not cursor.execute(query):
         last_month = 0
@@ -450,7 +468,7 @@ def reportsDefault():
     year_dict = {}
     year_total = 0
     for mon in range(12):
-        query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE_ADD(DATE(\""+str(today)+"\"), INTERVAL -1 MONTH) AND DATE(purchase_date) <= DATE(\""+str(today)+"\")"
+        query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchases natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE_ADD(DATE(\""+str(today)+"\"), INTERVAL -1 MONTH) AND DATE(purchase_date) <= DATE(\""+str(today)+"\")"
         if cursor.execute(query):
             results = cursor.fetchone()['count_tix']
         else:
@@ -482,7 +500,7 @@ def reports():
         num_of_months = (end.year - beg.year) * 12 + (end.month - beg.month)
 
 
-        query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE(\""+ str(beg) +"\") AND DATE(purchase_date) <= DATE(\""+ str(end) +"\")"
+        query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchases natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) >= DATE(\""+ str(beg) +"\") AND DATE(purchase_date) <= DATE(\""+ str(end) +"\")"
 
         if not cursor.execute(query):
             total_tix = 0
@@ -491,7 +509,7 @@ def reports():
 
         year_dict = {}
         for mon in range(12):
-            query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchase natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) <= DATE_ADD(DATE(\""+str(beg)+"\"), INTERVAL 1 MONTH) AND DATE_ADD(DATE(\""+str(beg)+"\"), INTERVAL 1 MONTH) >= DATE(purchase_date)"
+            query = "SELECT COUNT(DISTINCT ticket_id) as count_tix from purchases natural join ticket WHERE customer_email IS NOT NULL AND airline_name = \""+ airline_name +"\" AND DATE(purchase_date) <= DATE_ADD(DATE(\""+str(beg)+"\"), INTERVAL 1 MONTH) AND DATE_ADD(DATE(\""+str(beg)+"\"), INTERVAL 1 MONTH) >= DATE(purchase_date)"
             if cursor.execute(query):
                 results = cursor.fetchone()['count_tix']
             else:
@@ -505,7 +523,7 @@ def reports():
         mons = [mon for mon in range(1,num_of_months+1)]
         cursor.close()
         return render_template("report.html", year_dict=year_dict, results=total_tix, mons=mons)
-    return render_template("staff.html")
+    return render_template("staff.html", error="Invalid input for reports. Please try again")
 
 
 
@@ -524,7 +542,7 @@ def specify_spending():
         num_months = (endDate.year - startDate.year) * 12 + (endDate.month - startDate.month)
 
         # find the total money spent in range of specified dates
-        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + \
+        query = "SELECT SUM(sold_price) AS total_spent FROM purchases WHERE customer_email = \"" + session['Username'] + \
                 "\" AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\") AND DATE(purchase_date) <= DATE(\"" \
                 + str(endDate) + "\")"
         if cursor.execute(query):
@@ -535,7 +553,7 @@ def specify_spending():
         # money spent in range by month
         dict = {}
         for mon in range(num_months):
-            query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] \
+            query = "SELECT SUM(sold_price) AS total_spent FROM purchases WHERE customer_email = \"" + session['Username'] \
                     + "\" AND DATE(purchase_date) <= DATE_ADD(DATE(\"" + str(startDate) + \
                     "\"), INTERVAL 1 MONTH) AND DATE(purchase_date) >= DATE(\"" + str(startDate) + "\")"
             cursor.execute(query)
@@ -559,7 +577,7 @@ def specify_spending():
 def trackSpending():
     cursor = conn.cursor()
     # total money spent in the past year
-    query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + \
+    query = "SELECT SUM(sold_price) AS total_spent FROM purchases WHERE customer_email = \"" + session['Username'] + \
             "\" AND DATE(purchase_date) >= DATE_ADD(CURRENT_DATE, INTERVAL -1 YEAR)"
     if cursor.execute(query):
         total = cursor.fetchone()['total_spent']
@@ -572,7 +590,7 @@ def trackSpending():
     month_total = 0
     today = datetime.date(datetime.now())
     for mon in range(6):
-        query = "SELECT SUM(ticket_price) AS total_spent FROM purchase WHERE email = \"" + session['Username'] + \
+        query = "SELECT SUM(sold_price) AS total_spent FROM purchases WHERE customer_email = \"" + session['Username'] + \
                 "\" AND DATE(purchase_date) >= DATE_ADD(DATE(\"" + str(today) + \
                 "\"), INTERVAL -1 MONTH) AND DATE(purchase_date) <= DATE(\"" + str(today) + "\")"
         cursor.execute(query)
@@ -587,7 +605,7 @@ def trackSpending():
         dict[mon + 1] = (interval, results)
     months = [num for num in range(6, 0, -1)]
     cursor.close()
-    return render_template('spendingTrackPage.html.html', total=total, month_total=month_total, dict=dict, months=months)
+    return render_template('spendingTrackPage.html', total=total, month_total=month_total, dict=dict, months=months)
 
 
 @app.route("/revenue")
@@ -596,10 +614,10 @@ def revenue():
     airline_name = session['airline_name']
     cursor = conn.cursor()
 
-    today = datetime.datetime.now()
+    today = datetime.now()
 
-    one_month_ago = today - datetime.timedelta(days = 30)
-    one_year_ago = today - datetime.timedelta(days = 365)
+    one_month_ago = today - timedelta(days = 30)
+    one_year_ago = today - timedelta(days = 365)
     # revenue from last month
     query = f'''SELECT sum(sold_price) as rev FROM ticket NATURAL JOIN purchases WHERE ticket.airline_name = \'{airline_name}\' and purchases.purchase_date >= \'{one_month_ago.strftime("%Y-%m-%d")}\''''
     if cursor.execute(query):
@@ -640,10 +658,9 @@ def customerPurchase():
         cursor.close()
         return render_template("customer.html", error=error)
 
-    query = "SELECT num_of_seats FROM flight natural join airplane where airline_name = \"" + airline_name + \
-            "\" and flight_number = \"" + flight_number + "\""
+    query = "SELECT num_of_seats FROM flight natural join airplane where flight_number = \"" + flight_number + "\""
     cursor.execute(query)
-    flight_capacity = cursor.fetchone()
+    flight_capacity = cursor.fetchone()['num_of_seats']
 
     query = "SELECT COUNT(ticket_id) AS num_tickets FROM ticket"
     cursor.execute(query)
@@ -657,7 +674,7 @@ def customerPurchase():
     query = "SELECT base_price FROM flight natural join airplane where airline_name = \"" + airline_name +\
             "\" and flight_number = \"" + flight_number + "\""
     cursor.execute(query)
-    base_price = cursor.fetchone()
+    base_price = cursor.fetchone()['base_price']
 
     if num_seats_bought >= flight_capacity * 0.6 and num_seats_bought < flight_capacity:
         price_of_ticket = base_price * 1.25
@@ -669,7 +686,7 @@ def customerPurchase():
         return render_template("customer.html", error=error)
 
     # flight has seats open, need to make new ticket
-    ticket_id = num_tickets + 1
+    ticket_id = str(num_tickets + 1)
     query = "INSERT INTO ticket VALUES(\""+ ticket_id +"\", \""+ airline_name +"\", \""+ flight_number +"\")"
     if not cursor.execute(query):
         error="Error occured. Please attempt purchase again"
@@ -677,13 +694,13 @@ def customerPurchase():
         return render_template("customer.html", error=error)
     conn.commit()
 
-    currTime = datetime.now().strftime("%H:%M:%S")
+    ticket_id = int(ticket_id)
+    currTime = datetime.now()
     date = currTime.strftime("\'%Y-%m-%d\'")
     time = currTime.strftime("\'%H:%M:00\'")
-
-    query = "INSERT INTO purchase VALUES(\"" + ticket_id + "\", \""+ cust_email +"\", \""+ airline_name +"\", \""+ price_of_ticket +"\", \""+ \
-            date +"\", \""+ time +"\", \""+ card_type +"\", \""+ card_number +"\", \""+ card_name \
-            +"\", \""+ exp_date +"\")"
+    
+    query = "INSERT INTO purchases VALUES(\"" + str(ticket_id) + "\", \""+ cust_email +"\", \""+ airline_name +"\", "+ str(price_of_ticket) +", "+ str(date) +", "+ str(time) +", \""+ card_type +"\", "+ card_number +", \""+ card_name +"\", \""+ exp_date +"\")"
+    print(query)
     if not cursor.execute(query):
         error="Purchase unsuccessful. Try again."
         cursor.close()
