@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <nav>
+            <div>
+                <a href="/customer">Return To Home</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </nav>
+        <title>Track My Monthly Spending For Specified Dates</title>
+    </head>
+    <body>
+        <h1>Track My Monthly Spending For Specified Dates</h1>
+        <h3>Total Spent Within The Specified Range: ${{total}}</h3>
+        <br>
+        <hr>
+        <br>
+        <h3>Monthly-Wise Spending Within The Specified Range</h3>
+        <style>
+            table, th, td {
+              border:1px solid black;
+            }
+        </style>
+        <table style="width:85%">
+            <tr>
+                <th>Range of Dates</th>
+                <th>Money Spent</th>
+            </tr>
+                {% for mon in months %}
+                    <tr>
+                    <td>{{dict[mon][0]}}</td>
+                    <td>${{dict[mon][1]}}</td>
+                    </tr>
+                {% endfor %}
+        </table>
+        <br>
+        </body>
+    <br>
+    <hr>
+</html>

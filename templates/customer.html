@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF 8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Airport Database</title>
+        <link rel="stylesheet"
+        href="https://cdnjs.clourflare.com/ajax/libs/normalize/7.0.0/normalize.min.css">
+
+        <link rel="stylesheet" href="/static/style.css">
+
+    </head>
+
+    <div class="title">
+        <p class="title__h1">Airport Database Project</p>
+        <p class="title__h2">By Sean Balakhanei and Josh Quatela</p>
+        {{error}}
+    </div>
+
+    <div class="db">
+        <p class="sign_in">Access Database</p>
+        <form method="post">
+        <div>
+                <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
+                <input type="text" class="info_input" name="airline_name" id="airline_name" placeholder="Airline Name">
+                <input type="text" class="info_input" name="source_city" id="source_city" placeholder="From">
+                <input type="text" class="info_input" name="dest_city" id="dest_city" placeholder="To">
+                <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
+                <input type="text" class="info_input" name="ticket_id" id="ticket_id" placeholder="TicketID for Cancel">
+                <input type="text" class="info_input" name="date1" id="date1" placeholder="Date 1 for Spending Report">
+                <input type="text" class="info_input" name="date2" id="date2" placeholder="Date 2 for Spending Report">
+        </div>
+
+        <div>
+                <input type="text" class="info_input" name="departure_date" id="departure_date" placeholder="Departure Date">
+                <input type="text" class="info_input" name="departure_time" id="departure_time" placeholder="Departure Time">
+                <input type="text" class="info_input" name="arrival_date" id="arrival_date" placeholder="Arrival Date">
+                <input type="text" class="info_input" name="arrival_time" id="arrival_time" placeholder="Arrival Time">
+                <input type="number" class="info_input" name="rating" id="rating" min="1" max="5" placeholder="Rating">
+                <input type="text" class="info_input" name="comment" id="comment" placeholder="Comment">
+        </div>
+
+        <div>
+                <input type="text" class="info_input" name="card_type" id="card_type" placeholder="Card Type">
+                <input type="text" class="info_input" name="card_number" id="card_number" placeholder="Card Number">
+                <input type="text" class="info_input" name="card_name" id="card_name" placeholder="Card Name">
+                <input type="text" class="info_input" name="card_expiration_date" id="card_expiration_date" placeholder="Card Exp. Date">
+        </div>
+
+        <button class="search_button" formaction="/customerSearch" onclick="customerSearch()" id="search">Search</button>
+        <button class="search_button" formaction="/customerPurchase" onclick="customerPurchase()" id="purchase_ticket">Purchase Ticket</button>
+        <button class="search_button" formaction="/cancelTrip" onclick="cancelTrip()" id="cancel_trip">Cancel Trip</button>
+        <button class="search_button" formaction="/rate" onclick="rateFlight()" id="give_rating">Give Rating</button>
+
+        </form>
+
+        {% for result in results %}
+            <p> {{result}} </p> 
+        {% endfor %}
+    </div>
+
+
+    <div class="box">
+        <form method="get">
+            <p>Actions</p>
+            <button class="search_button" formaction="/customerFlight" onclick="customerFlights()" id="view_flights">View My Flights</button>
+            <button class="search_button" formaction="/specifyspending" onclick="customerSpending()" id="specifyspending">Track My Spending With Specified Range</button>
+            <button class="search_button" formaction="/trackSpending" onclick="trackSpending()" id="track_spending">Track My Spending</button>
+        </form>
+        <a href="/logout"><button class="search_button" id="logout" onclick="logout()">Logout</button></a>
+    </div>
+
+</html>

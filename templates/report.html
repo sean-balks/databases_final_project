@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <nav>
+            <div>
+                <a href="/staff">Return To Home</a>
+                <a href="/logout">Logout</a>
+            </div>
+        </nav>
+        <title>Reports For Specified Time Period Entered</title>
+    </head>
+    <body>
+        <h1>Number of Tickets Purchased Within Specified Time Period</h1>
+        <style>
+            table, th, td {
+              border:1px solid black;
+            }
+        </style>
+        <br>
+        <br>
+        <h3>Total Tickets: {{results}}</h3>
+        <br>
+        <table style="width:85%">
+            <tr>
+                <th>Date Range</th>
+                <th>Number of Tickets</th>
+            </tr>
+            {% for mon in mons %}
+                <tr>
+                <td>{{year_dict[mon][0]}}</td>
+                <td>{{year_dict[mon][1]}}</td>
+                </tr>
+            {% endfor %}
+        </table>
+        <br>
+    </body>
+    <br>
+    <hr>
+</html>
