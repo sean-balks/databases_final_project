@@ -18,7 +18,7 @@
     </div>
 
     <div class="db">
-        <p class="sign_in">Access Database</p>
+        <p class="sign_in">Access Database Staff</p>
         <form method="post" action="">
         <div>
                 <input type="text" class="info_input" name="airport_name" id="airport_name" placeholder="Airport Name">
@@ -28,6 +28,7 @@
                 <input type="text" class="info_input" name="flight_num" id="flight_num" placeholder="Flight Number">
                 <input type="text" class="info_input" name="flight_id" id="flight_id" placeholder="Flight ID">
                 <input type="number" class="info_input" name="base_price" id="base_price" placeholder="Base Flight Price">
+                <input type="text" class="info_input" name="airport_city" id="airport_city" placeholder="City">
         </div>
 
         <div>
@@ -41,6 +42,7 @@
                 <input type="text" class="info_input" name="airplane_ID" id="airplane_ID" placeholder="Airplane ID">
                 <input type="text" class="info_input" name="reportDate1" id="reportDate1" placeholder="Report Date 1">
                 <input type="text" class="info_input" name="reportDate2" id="reportDate2" placeholder="Report Date 2">
+                <input type="text" class="info_input" name="cust_email_staff" id="cust_email_staff" placeholder="Cust Email">
         </div>
 
         <button class="search_button" formaction="/staffflights" onclick="staffFlights()" id="staffFlights">Search</button>
@@ -49,7 +51,9 @@
         <button class="search_button" formaction="/addairplane" onclick="addAirplane()" id="add_airplane">Add Airplane</button>
         <button class="search_button" formaction="/addairport" onclick="addAirport()" id="add_airport">Add Airport</button>
         <button class="search_button" formaction="/ratings" onclick="ratings()" id="view_ratings">View Flight Ratings</button>
-        <button class="search_button" formaction="/staffviewflights" onclick="viewFlights()" id="staffviewflights">View My Flights</button>
+        <button class="search_button" formaction="/staffviewflights" onclick="viewFlights()" id="staffviewflights">View My Flights (30 days)</button>
+        <button class="search_button" formaction="/viewairplanes" onclick="viewairplanes()" id="viewairplanes">View Airplanes</button>
+        <button class="search_button" formaction="/see_cust_flights" onclick="see_cust_flights()" id="see_cust_flights">See Customer Flights</button>
 
         </form>
 
